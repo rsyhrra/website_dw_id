@@ -75,7 +75,7 @@ $cumlaude = $summary['total_cumlaude'] ?? 0;
     </div>
     <nav class="hidden md:flex gap-6">
         <a class="text-primary border-b-2 border-primary pb-1 font-bold transition-colors duration-200" href="#">Dashboard</a>
-        <a class="text-on-surface-variant hover:text-primary transition-colors duration-200" href="#">Academic</a>
+        <a class="text-on-surface-variant hover:text-primary transition-colors duration-200" href="akademik.php">Academic</a>
     </nav>
     <div class="flex items-center gap-4">
         <button class="text-on-surface-variant hover:text-primary transition-colors duration-200">
