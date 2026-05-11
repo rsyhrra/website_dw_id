@@ -1,28 +1,17 @@
 <?php
+// File: index.php
+require_once 'config.php'; // Panggil config.php yang memuat pengaturan URL dan API_KEY
 
-define('API_BASE', 'http://localhost/pbl_integrasi/api_dw_tkj.php');
-define('API_KEY', 'TKJ-PNUP-2026-SECRET');
-
-function callAPI($endpoint) {
-    $ch = curl_init($endpoint);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    // Mengirimkan API Key melalui HTTP Header
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['key: ' . API_KEY]);
-    $res = curl_exec($ch);
-    curl_close($ch);
-    $data = json_decode($res, true);
-    return $data['results'] ?? [];
-}
-
-// Menarik data dari Endpoint API
+// Menarik data dari Endpoint API menggunakan fungsi callAPI
 $summary = callAPI(API_BASE . "?type=summary");
 $ipkData = callAPI(API_BASE . "?type=chart_ipk");
 $predikatData = callAPI(API_BASE . "?type=chart_predikat");
 
-// Fallback data (berjaga-jaga jika API gagal diakses)
+// Fallback data (berjaga-jaga jika API gagal diakses / API kosong)
 $total_mhs = $summary['total_mahasiswa'] ?? 0;
-$avg_ipk = number_format($summary['rata_rata_ipk'] ?? 0, 2);
+$avg_ipk = number_format((float)($summary['rata_rata_ipk'] ?? 0), 2);
 $cumlaude = $summary['total_cumlaude'] ?? 0;
+
 ?>
 
 <!DOCTYPE html>
