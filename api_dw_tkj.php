@@ -4,6 +4,14 @@
 
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Headers: *");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+
+// Tangani preflight request dari browser (fetch)
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
 
 include 'db.php';
 
@@ -14,7 +22,8 @@ include 'db.php';
 $headers = function_exists('apache_request_headers') ? apache_request_headers() : [];
 $client_key = trim($headers['key'] ?? $headers['Key'] ?? $_SERVER['HTTP_KEY'] ?? '');
 
-$stmt = $conn->prepare("SELECT id FROM admin WHERE key_token = ? LIMIT 1");
+// Ganti 'id' menjadi 'id_user' sesuai struktur database Anda
+$stmt = $conn->prepare("SELECT id_user FROM admin WHERE key_token = ? LIMIT 1");
 if (!$stmt) {
     http_response_code(500);
     echo json_encode(["status" => "error", "message" => "Server error."]);
@@ -122,7 +131,13 @@ elseif ($type == 'students') {
                     (SELECT predikat FROM fact_kelulusan_tkj kt
                      WHERE kt.sk_mahasiswa = m.sk_mahasiswa LIMIT 1),
                     '-'
-                ) as predikat
+                ) as predikat,
+                COALESCE(
+                    (SELECT w.tahun_ajaran FROM fact_kelulusan_tkj kt
+                     JOIN dim_waktu w ON kt.sk_waktu = w.sk_waktu
+                     WHERE kt.sk_mahasiswa = m.sk_mahasiswa LIMIT 1),
+                    '-'
+                ) as tahun_lulus
             FROM dim_mahasiswa_tkj m
             ORDER BY m.angkatan DESC, m.nama_mahasiswa ASC";
     $query = $conn->query($sql);
@@ -162,8 +177,84 @@ elseif ($type == 'chart_ipk_mhs') {
 }
 
 // --------------------------------------------------
+// ENDPOINT: create_student
+// --------------------------------------------------
+elseif ($type == 'create_student') {
+    $nim = $_POST['nim'] ?? '';
+    $nama = $_POST['nama_mahasiswa'] ?? '';
+    $angkatan = intval($_POST['angkatan'] ?? 0);
+    $kelas = $_POST['kelas'] ?? '';
+    $status = $_POST['status_akademik'] ?? 'Aktif';
+    
+    $sql = "INSERT INTO dim_mahasiswa_tkj (nim, nama_mahasiswa, angkatan, kelas, status_akademik) VALUES (?, ?, ?, ?, ?)";
+    $stmt_crud = $conn->prepare($sql);
+    if ($stmt_crud) {
+        $stmt_crud->bind_param("ssiss", $nim, $nama, $angkatan, $kelas, $status);
+        if ($stmt_crud->execute()) {
+            $response = ["message" => "Berhasil menambahkan mahasiswa"];
+        } else {
+            http_response_code(500);
+            $response = ["message" => "Gagal: " . $stmt_crud->error];
+        }
+        $stmt_crud->close();
+    } else {
+        http_response_code(500);
+        $response = ["message" => "Gagal prepare statement"];
+    }
+}
+
+// --------------------------------------------------
+// ENDPOINT: update_student
+// --------------------------------------------------
+elseif ($type == 'update_student') {
+    $sk = intval($_POST['sk_mahasiswa'] ?? 0);
+    $nim = $_POST['nim'] ?? '';
+    $nama = $_POST['nama_mahasiswa'] ?? '';
+    $angkatan = intval($_POST['angkatan'] ?? 0);
+    $kelas = $_POST['kelas'] ?? '';
+    $status = $_POST['status_akademik'] ?? 'Aktif';
+    
+    $sql = "UPDATE dim_mahasiswa_tkj SET nim=?, nama_mahasiswa=?, angkatan=?, kelas=?, status_akademik=? WHERE sk_mahasiswa=?";
+    $stmt_crud = $conn->prepare($sql);
+    if ($stmt_crud) {
+        $stmt_crud->bind_param("ssissi", $nim, $nama, $angkatan, $kelas, $status, $sk);
+        if ($stmt_crud->execute()) {
+            $response = ["message" => "Berhasil mengubah mahasiswa"];
+        } else {
+            http_response_code(500);
+            $response = ["message" => "Gagal: " . $stmt_crud->error];
+        }
+        $stmt_crud->close();
+    } else {
+        http_response_code(500);
+        $response = ["message" => "Gagal prepare statement"];
+    }
+}
+
+// --------------------------------------------------
+// ENDPOINT: delete_student
+// --------------------------------------------------
+elseif ($type == 'delete_student') {
+    $sk = intval($_POST['sk_mahasiswa'] ?? 0);
+    $sql = "DELETE FROM dim_mahasiswa_tkj WHERE sk_mahasiswa=?";
+    $stmt_crud = $conn->prepare($sql);
+    if ($stmt_crud) {
+        $stmt_crud->bind_param("i", $sk);
+        if ($stmt_crud->execute()) {
+            $response = ["message" => "Berhasil menghapus mahasiswa"];
+        } else {
+            http_response_code(500);
+            $response = ["message" => "Gagal: " . $stmt_crud->error];
+        }
+        $stmt_crud->close();
+    } else {
+        http_response_code(500);
+        $response = ["message" => "Gagal prepare statement"];
+    }
+}
+
+// --------------------------------------------------
 // ENDPOINT: search  ← BARU: untuk pencarian jurnal/referensi
-// Digunakan oleh: index.php (form pencarian akademik)
 // --------------------------------------------------
 elseif ($type == 'search') {
     $keyword = isset($_GET['q']) ? '%' . trim($_GET['q']) . '%' : '%';
