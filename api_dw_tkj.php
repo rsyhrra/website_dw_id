@@ -55,35 +55,83 @@ if ($type == 'summary') {
     $ipk      = $conn->query("SELECT ROUND(AVG(ipk), 2) as rata FROM fact_ringkasan_akademik")->fetch_assoc();
     $cumlaude = $conn->query("SELECT COUNT(*) as total FROM fact_kelulusan_tkj WHERE predikat LIKE '%Cum Laude%'")->fetch_assoc();
 
+    // Get unique angkatan
+    $angkatan_query = $conn->query("SELECT DISTINCT angkatan FROM dim_mahasiswa_tkj WHERE angkatan IS NOT NULL ORDER BY angkatan DESC");
+    $angkatan_list = [];
+    if ($angkatan_query) {
+        while ($row = $angkatan_query->fetch_assoc()) {
+            $angkatan_list[] = (int)$row['angkatan'];
+        }
+    }
+
+    // Get unique kelas
+    $kelas_query = $conn->query("SELECT DISTINCT kelas FROM dim_mahasiswa_tkj WHERE kelas IS NOT NULL AND kelas != '' ORDER BY kelas ASC");
+    $kelas_list = [];
+    if ($kelas_query) {
+        while ($row = $kelas_query->fetch_assoc()) {
+            $kelas_list[] = $row['kelas'];
+        }
+    }
+
     $response = [
         "total_mahasiswa" => (int)($mhs['total'] ?? 0),
         "rata_rata_ipk"   => (float)($ipk['rata'] ?? 0),
         "total_cumlaude"  => (int)($cumlaude['total'] ?? 0),
+        "angkatan_list"   => $angkatan_list,
+        "kelas_list"      => $kelas_list,
     ];
 }
 
-// --------------------------------------------------
-// ENDPOINT: chart_ipk  ← FIX: endpoint ini hilang sebelumnya!
-// Digunakan oleh: index.php (Line Chart Tren IPK per Semester)
-// --------------------------------------------------
 elseif ($type == 'chart_ipk') {
+    $angkatan = isset($_GET['angkatan']) ? intval($_GET['angkatan']) : 0;
+    $kelas    = isset($_GET['kelas']) ? trim($_GET['kelas']) : '';
+
+    $where_clauses = [];
+    $params = [];
+    $types = "";
+
+    if ($angkatan > 0) {
+        $where_clauses[] = "m.angkatan = ?";
+        $params[] = $angkatan;
+        $types .= "i";
+    }
+    if ($kelas !== '') {
+        $where_clauses[] = "m.kelas = ?";
+        $params[] = $kelas;
+        $types .= "s";
+    }
+
+    $where_sql = "";
+    if (count($where_clauses) > 0) {
+        $where_sql = "WHERE " . implode(" AND ", $where_clauses);
+    }
+
     $sql = "SELECT
                 w.sk_waktu,
                 CONCAT(w.tipe_semester, ' ', w.tahun_ajaran) AS label_semester,
                 ROUND(AVG(f.ipk), 2) AS ipk
             FROM fact_ringkasan_akademik f
             JOIN dim_waktu w ON f.sk_waktu = w.sk_waktu
+            JOIN dim_mahasiswa_tkj m ON f.sk_mahasiswa = m.sk_mahasiswa
+            $where_sql
             GROUP BY w.sk_waktu, w.tipe_semester, w.tahun_ajaran
             ORDER BY w.sk_waktu ASC";
-    $query = $conn->query($sql);
-    if ($query) {
-        while ($row = $query->fetch_assoc()) {
+
+    $stmt2 = $conn->prepare($sql);
+    if ($stmt2) {
+        if (count($params) > 0) {
+            $stmt2->bind_param($types, ...$params);
+        }
+        $stmt2->execute();
+        $result = $stmt2->get_result();
+        while ($row = $result->fetch_assoc()) {
             $response[] = [
                 "sk_waktu" => $row['sk_waktu'],
                 "label"    => $row['label_semester'],
                 "ipk"      => (float)$row['ipk'],
             ];
         }
+        $stmt2->close();
     }
 }
 
