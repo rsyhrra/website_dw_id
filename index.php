@@ -87,9 +87,27 @@ if ($search_query !== '') {
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Preloader */
+        #preloader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #f3f4f9; z-index: 99999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.5s ease;
+        }
+        .spinner {
+            width: 40px; height: 40px; border: 4px solid rgba(99, 102, 241, 0.2);
+            border-top-color: #6366f1; border-radius: 50%; animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="bg-background text-text-main min-h-screen flex">
+<!-- Preloader -->
+<div id="preloader">
+    <div class="spinner"></div>
+    <p class="mt-4 text-sm font-bold text-slate-500">Memuat Data...</p>
+</div>
 
 <!-- ====== LAYOUT WRAPPER ====== -->
 <div class="flex flex-1 w-full max-w-[1600px] mx-auto relative min-h-screen">
@@ -635,6 +653,17 @@ function toggleDarkMode() {
 document.addEventListener('click', function() {
     const dropdown = document.getElementById('profileDropdown');
     if (dropdown) dropdown.classList.add('hidden');
+});
+
+// ====== PRELOADER ======
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        const pre = document.getElementById('preloader');
+        if(pre) {
+            pre.style.opacity = '0';
+            setTimeout(() => pre.style.display = 'none', 500);
+        }
+    }, 500);
 });
 
 document.addEventListener('DOMContentLoaded', function () {

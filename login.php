@@ -73,9 +73,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.6);
         }
+        
+        /* Preloader */
+        #preloader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #f3f4f9; z-index: 99999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.5s ease;
+        }
+        .spinner {
+            width: 40px; height: 40px; border: 4px solid rgba(99, 102, 241, 0.2);
+            border-top-color: #6366f1; border-radius: 50%; animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="bg-background text-text-main min-h-screen flex items-center justify-center relative overflow-hidden p-4">
+
+<!-- Preloader -->
+<div id="preloader">
+    <div class="spinner"></div>
+    <p class="mt-4 text-sm font-bold text-slate-500">Memuat Data...</p>
+</div>
 
 <!-- Beautiful colorful gradient blobs in the background -->
 <div class="absolute -left-20 -bottom-20 w-96 h-96 rounded-full bg-indigo-200/50 blur-3xl"></div>
@@ -146,5 +165,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 </div>
 
+<script>
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        const pre = document.getElementById('preloader');
+        if(pre) {
+            pre.style.opacity = '0';
+            setTimeout(() => pre.style.display = 'none', 500);
+        }
+    }, 500);
+});
+</script>
 </body>
 </html>

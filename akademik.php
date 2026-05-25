@@ -8,35 +8,16 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
 }
 
 require_once 'config.php';
-$res_api = callAPI(API_BASE . "?type=students");
-// Pastikan $students selalu array agar tidak error di foreach
-$students = is_array($res_api) ? $res_api : [];
 
-$students_by_class = [];
-if (!empty($students)) {
-    foreach ($students as $mhs) {
-        $kelas = empty($mhs['kelas']) ? 'Tidak Ada Kelas' : $mhs['kelas'];
-        $status = strtolower($mhs['status_akademik'] ?? '');
-        
-        // Ganti nama kelas menjadi Tahun Lulus jika ia alumni
-        if ($status === 'lulus' || $status === 'alumni' || strtolower($kelas) === 'alumni') {
-            $tahun = ($mhs['tahun_lulus'] ?? '-') !== '-' ? $mhs['tahun_lulus'] : '';
-            $kelas = 'Alumni' . ($tahun ? " (Lulusan $tahun)" : '');
-        }
-        
-        $students_by_class[$kelas][] = $mhs;
-    }
-    
-    // Urutkan key kelas (A-Z)
-    ksort($students_by_class);
-    
-    // Urutkan tiap kelas berdasarkan NIM ASC
-    foreach ($students_by_class as $k => &$mhs_list) {
-        usort($mhs_list, function($a, $b) {
-            return strcmp($a['nim'] ?? '', $b['nim'] ?? '');
-        });
-    }
-}
+// Ambil list kelas
+$res_classes = callAPI(API_BASE . "?type=classes");
+$classes = is_array($res_classes) ? $res_classes : [];
+
+// Ambil summary untuk footer
+$res_summary = callAPI(API_BASE . "?type=students_summary");
+$summary = is_array($res_summary) ? $res_summary : [
+    "total_aktif" => 0, "total_alumni" => 0, "ipk_tertinggi" => 0, "ipk_terendah" => 0
+];
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -119,9 +100,27 @@ if (!empty($students)) {
             backdrop-filter: blur(16px);
             border: 1px solid rgba(255, 255, 255, 0.5);
         }
+        
+        /* Preloader */
+        #preloader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #f3f4f9; z-index: 99999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.5s ease;
+        }
+        .spinner {
+            width: 40px; height: 40px; border: 4px solid rgba(99, 102, 241, 0.2);
+            border-top-color: #6366f1; border-radius: 50%; animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="bg-background text-text-main min-h-screen flex">
+<!-- Preloader -->
+<div id="preloader">
+    <div class="spinner"></div>
+    <p class="mt-4 text-sm font-bold text-slate-500">Memuat Data...</p>
+</div>
 
 <!-- ====== LAYOUT WRAPPER ====== -->
 <div class="flex flex-1 w-full max-w-[1600px] mx-auto relative min-h-screen">
@@ -223,14 +222,11 @@ if (!empty($students)) {
             <!-- Filters & Buttons group -->
             <div class="flex flex-wrap items-center gap-4">
                 <div class="flex items-center gap-2">
-                    <span class="material-symbols-outlined text-slate-400 text-[18px]">filter_alt</span>
-                    <select id="filterAngkatan" class="border-0 bg-slate-50 text-slate-600 rounded-2xl pl-4 pr-10 py-2.5 text-xs font-bold focus:ring-primary focus:bg-white cursor-pointer hover:bg-slate-100 transition-colors">
-                        <option value="">Semua Angkatan</option>
-                        <?php
-                        $angkatan_list = array_unique(array_column($students, 'angkatan'));
-                        rsort($angkatan_list);
-                        foreach ($angkatan_list as $a): ?>
-                            <option value="<?= $a ?>"><?= htmlspecialchars($a) ?></option>
+                    <span class="material-symbols-outlined text-slate-400 text-[18px]">class</span>
+                    <select id="classSelector" onchange="loadStudents()" class="border-0 bg-slate-50 text-slate-600 rounded-2xl pl-4 pr-10 py-2.5 text-xs font-bold focus:ring-primary focus:bg-white cursor-pointer hover:bg-slate-100 transition-colors">
+                        <option value="">Pilih Kelas</option>
+                        <?php foreach ($classes as $c): ?>
+                            <option value="<?= htmlspecialchars($c) ?>"><?= htmlspecialchars($c) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -254,17 +250,26 @@ if (!empty($students)) {
 
         <!-- ====== STUDENT TABLE SECTIONS ====== -->
         <div id="studentsContainer" class="flex flex-col gap-8 w-full">
-            <?php if (empty($students)): ?>
-            <div class="bg-white rounded-[2rem] p-12 text-center text-text-muted shadow-premium border border-slate-100/50">
-                <span class="material-symbols-outlined text-5xl block mb-3 text-slate-300">person_off</span>
-                <p class="text-sm font-semibold">Data mahasiswa tidak ditemukan atau API tidak terhubung.</p>
+            <!-- Loading State -->
+            <div id="loadingState" class="hidden text-center py-12">
+                <div class="spinner mx-auto mb-4"></div>
+                <p class="text-sm font-bold text-slate-500">Mengambil data mahasiswa...</p>
             </div>
-            <?php else: foreach ($students_by_class as $kelas => $mhs_list): ?>
-            <div class="class-section flex flex-col gap-4" data-kelas="<?= htmlspecialchars($kelas) ?>">
-                <h3 class="text-md font-extrabold text-slate-800 flex items-center gap-2 px-2">
-                    <span class="w-2.5 h-2.5 rounded-full bg-primary shadow-purple-glow"></span>
-                    <?= htmlspecialchars($kelas) ?>
-                </h3>
+            
+            <!-- Empty State -->
+            <div id="emptyState" class="bg-white rounded-[2rem] p-12 text-center text-text-muted shadow-premium border border-slate-100/50">
+                <span class="material-symbols-outlined text-5xl block mb-3 text-slate-300">class</span>
+                <p class="text-sm font-semibold">Silakan pilih kelas terlebih dahulu.</p>
+            </div>
+            
+            <!-- Table Content -->
+            <div id="tableContainer" class="hidden class-section flex flex-col gap-4">
+                <div class="flex justify-between items-center px-2">
+                    <h3 id="currentClassTitle" class="text-md font-extrabold text-slate-800 flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-primary shadow-purple-glow"></span>
+                        -
+                    </h3>
+                </div>
 
                 <div class="bg-white rounded-[2rem] shadow-premium overflow-hidden border border-slate-100/50">
                     <div class="overflow-x-auto">
@@ -281,78 +286,22 @@ if (!empty($students)) {
                                     <th class="px-6 py-4 text-center w-28">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-50 font-medium text-slate-700">
-                                <?php foreach ($mhs_list as $i => $mhs):
-                                    $ipk_val = (float)($mhs['ipk'] ?? 0);
-                                    $ipk_pct = min(100, ($ipk_val / 4.0) * 100);
-                                    $status  = $mhs['status_akademik'] ?? '-';
-                                    $badge   = match(strtolower($status)) {
-                                        'aktif'       => 'badge-active',
-                                        'alumni', 'lulus' => 'badge-alumni',
-                                        default       => 'badge-inactive',
-                                    };
-                                    $predikat = $mhs['predikat'] ?? '-';
-                                    $json_data = htmlspecialchars(json_encode($mhs), ENT_QUOTES, 'UTF-8');
-                                ?>
-                                <tr class="hover:bg-slate-50/50 transition-colors student-row group"
-                                    data-nim="<?= htmlspecialchars($mhs['nim'] ?? '') ?>"
-                                    data-nama="<?= htmlspecialchars(strtolower($mhs['nama_mahasiswa'] ?? '')) ?>"
-                                    data-angkatan="<?= htmlspecialchars($mhs['angkatan'] ?? '') ?>"
-                                    data-status="<?= htmlspecialchars($status) ?>">
-                                    <td class="px-6 py-4 text-text-muted row-num text-center text-xs font-semibold"><?= $i + 1 ?></td>
-                                    <td class="px-6 py-4 font-mono text-xs text-text-muted"><?= htmlspecialchars($mhs['nim'] ?? '-') ?></td>
-                                    <td class="px-6 py-4 font-bold text-slate-800 cursor-pointer hover:text-primary transition-colors" 
-                                        onclick="openChart(<?= $mhs['sk_mahasiswa'] ?>, '<?= htmlspecialchars(addslashes($mhs['nama_mahasiswa'] ?? '')) ?>')" 
-                                        title="Lihat grafik IPK">
-                                        <?= htmlspecialchars($mhs['nama_mahasiswa'] ?? '-') ?>
-                                    </td>
-                                    <td class="px-6 py-4 text-text-muted text-xs"><?= htmlspecialchars($mhs['angkatan'] ?? '-') ?></td>
-                                    <td class="px-6 py-4">
-                                        <div class="flex flex-col gap-1 w-24">
-                                            <span class="font-extrabold text-slate-800 text-xs"><?= number_format($ipk_val, 2) ?></span>
-                                            <div class="ipk-bar w-full"><div class="ipk-fill" style="width:<?= $ipk_pct ?>%"></div></div>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 text-xs font-semibold text-text-muted"><?= htmlspecialchars($predikat) ?></td>
-                                    <td class="px-6 py-4"><span class="badge <?= $badge ?>"><?= htmlspecialchars($status) ?></span></td>
-                                    <td class="px-6 py-4 text-center">
-                                        <div class="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onclick="openCrudModal('edit', <?= $json_data ?>)" class="text-slate-400 hover:text-primary hover:bg-indigo-50 p-2 rounded-xl transition-all" title="Edit">
-                                                <span class="material-symbols-outlined text-[18px]">edit</span>
-                                            </button>
-                                            <button onclick="deleteStudent(<?= $mhs['sk_mahasiswa'] ?>)" class="text-slate-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-xl transition-all" title="Hapus">
-                                                <span class="material-symbols-outlined text-[18px]">delete</span>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <?php endforeach; ?>
+                            <tbody id="studentTableBody" class="divide-y divide-slate-50 font-medium text-slate-700">
+                                <!-- Dynamic rows via JS -->
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
-            <?php endforeach; endif; ?>
         </div>
 
         <!-- ====== SUMMARY SECTION ====== -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
-            <?php
-            if (!empty($students)) {
-                $aktif   = count(array_filter($students, fn($m) => strtolower($m['status_akademik'] ?? '') === 'aktif'));
-                $alumni  = count(array_filter($students, function($m) {
-                    $st = strtolower($m['status_akademik'] ?? '');
-                    return $st === 'alumni' || $st === 'lulus';
-                }));
-                $ipk_arr = array_column($students, 'ipk');
-                $ipk_max = $ipk_arr ? max($ipk_arr) : 0;
-                $ipk_min = $ipk_arr ? min(array_filter($ipk_arr, fn($v) => $v > 0)) : 0;
-            }
             $stats = [
-                ['label' => 'Total Mahasiswa Aktif', 'val' => $aktif ?? 0, 'icon' => 'group', 'bg' => 'bg-indigo-50', 'color' => 'text-primary'],
-                ['label' => 'Total Alumni', 'val' => $alumni ?? 0, 'icon' => 'workspace_premium', 'bg' => 'bg-pink-50', 'color' => 'text-accent-pink'],
-                ['label' => 'IPK Tertinggi', 'val' => number_format((float)($ipk_max ?? 0), 2), 'icon' => 'trending_up', 'bg' => 'bg-emerald-50', 'color' => 'text-emerald-500'],
-                ['label' => 'IPK Terendah', 'val' => number_format((float)($ipk_min ?? 0), 2), 'icon' => 'trending_down', 'bg' => 'bg-rose-50', 'color' => 'text-rose-500'],
+                ['label' => 'Total Mahasiswa Aktif', 'val' => $summary['total_aktif'] ?? 0, 'icon' => 'group', 'bg' => 'bg-indigo-50', 'color' => 'text-primary'],
+                ['label' => 'Total Alumni', 'val' => $summary['total_alumni'] ?? 0, 'icon' => 'workspace_premium', 'bg' => 'bg-pink-50', 'color' => 'text-accent-pink'],
+                ['label' => 'IPK Tertinggi', 'val' => number_format((float)($summary['ipk_tertinggi'] ?? 0), 2), 'icon' => 'trending_up', 'bg' => 'bg-emerald-50', 'color' => 'text-emerald-500'],
+                ['label' => 'IPK Terendah', 'val' => number_format((float)($summary['ipk_terendah'] ?? 0), 2), 'icon' => 'trending_down', 'bg' => 'bg-rose-50', 'color' => 'text-rose-500'],
             ];
             foreach ($stats as $s): ?>
             <div class="bg-white border border-slate-100 rounded-[2rem] p-6 flex flex-col gap-4 shadow-premium group hover:border-primary transition-all relative overflow-hidden">
@@ -539,6 +488,17 @@ if (!empty($students)) {
 </div>
 
 <script>
+// ====== INITIAL LOAD ======
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        const pre = document.getElementById('preloader');
+        if(pre) {
+            pre.style.opacity = '0';
+            setTimeout(() => pre.style.display = 'none', 500);
+        }
+    }, 500);
+});
+
 // ====== GLOBAL ACTIONS ======
 function toggleProfileDropdown(e) {
     e.stopPropagation();
@@ -584,54 +544,137 @@ document.addEventListener('click', function() {
     if (dropdown) dropdown.classList.add('hidden');
 });
 
-// ====== DATA MAHASISWA ======
-const allStudents = <?= json_encode($students ?: []) ?>;
+// ====== DATA MAHASISWA & AJAX FETCH ======
 let activeChart = null;
 let crudMode = 'add';
+
+async function loadStudents() {
+    const kelas = document.getElementById('classSelector').value;
+    const tableContainer = document.getElementById('tableContainer');
+    const emptyState = document.getElementById('emptyState');
+    const loadingState = document.getElementById('loadingState');
+    const tbody = document.getElementById('studentTableBody');
+    
+    if (!kelas) {
+        tableContainer.classList.add('hidden');
+        loadingState.classList.add('hidden');
+        emptyState.classList.remove('hidden');
+        emptyState.innerHTML = '<span class="material-symbols-outlined text-5xl block mb-3 text-slate-300">class</span><p class="text-sm font-semibold">Silakan pilih kelas terlebih dahulu.</p>';
+        document.getElementById('rowCount').textContent = '0';
+        return;
+    }
+    
+    tableContainer.classList.add('hidden');
+    emptyState.classList.add('hidden');
+    loadingState.classList.remove('hidden');
+    
+    try {
+        const res = await fetch(`<?= API_BASE ?>?type=students&kelas=${encodeURIComponent(kelas)}`, {
+            headers: { 'key': '<?= API_KEY ?>' }
+        });
+        const json = await res.json();
+        const data = json.results || [];
+        
+        loadingState.classList.add('hidden');
+        
+        if (data.length === 0) {
+            emptyState.classList.remove('hidden');
+            emptyState.innerHTML = '<span class="material-symbols-outlined text-5xl block mb-3 text-slate-300">person_off</span><p class="text-sm font-semibold">Tidak ada mahasiswa di kelas ini.</p>';
+            document.getElementById('rowCount').textContent = '0';
+            return;
+        }
+        
+        document.getElementById('currentClassTitle').innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-primary shadow-purple-glow"></span> ${kelas}`;
+        
+        tbody.innerHTML = '';
+        data.forEach((mhs, i) => {
+            const ipk_val = parseFloat(mhs.ipk || 0);
+            const ipk_pct = Math.min(100, (ipk_val / 4.0) * 100);
+            const status = mhs.status_akademik || '-';
+            let badge = 'badge-inactive';
+            if (status.toLowerCase() === 'aktif') badge = 'badge-active';
+            else if (status.toLowerCase() === 'alumni' || status.toLowerCase() === 'lulus') badge = 'badge-alumni';
+            
+            const jsonData = JSON.stringify(mhs).replace(/"/g, '&quot;');
+            const escapedNama = (mhs.nama_mahasiswa || '').replace(/'/g, "\\'");
+            
+            tbody.innerHTML += `
+                <tr class="hover:bg-slate-50/50 transition-colors student-row group" data-nim="${mhs.nim || ''}" data-nama="${(mhs.nama_mahasiswa || '').toLowerCase()}" data-angkatan="${mhs.angkatan || ''}" data-status="${status}">
+                    <td class="px-6 py-4 text-text-muted row-num text-center text-xs font-semibold">${i + 1}</td>
+                    <td class="px-6 py-4 font-mono text-xs text-text-muted">${mhs.nim || '-'}</td>
+                    <td class="px-6 py-4 font-bold text-slate-800 cursor-pointer hover:text-primary transition-colors" onclick="openChart(${mhs.sk_mahasiswa}, '${escapedNama}')">${mhs.nama_mahasiswa || '-'}</td>
+                    <td class="px-6 py-4 text-text-muted text-xs">${mhs.angkatan || '-'}</td>
+                    <td class="px-6 py-4">
+                        <div class="flex flex-col gap-1 w-24">
+                            <span class="font-extrabold text-slate-800 text-xs">${ipk_val.toFixed(2)}</span>
+                            <div class="ipk-bar w-full"><div class="ipk-fill" style="width:${ipk_pct}%"></div></div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-xs font-semibold text-text-muted">${mhs.predikat || '-'}</td>
+                    <td class="px-6 py-4"><span class="badge ${badge}">${status}</span></td>
+                    <td class="px-6 py-4 text-center">
+                        <div class="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick="openCrudModal('edit', ${jsonData})" class="text-slate-400 hover:text-primary hover:bg-indigo-50 p-2 rounded-xl transition-all" title="Edit"><span class="material-symbols-outlined text-[18px]">edit</span></button>
+                            <button onclick="deleteStudent(${mhs.sk_mahasiswa})" class="text-slate-400 hover:text-red-500 hover:bg-red-50 p-2 rounded-xl transition-all" title="Hapus"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        tableContainer.classList.remove('hidden');
+        document.getElementById('rowCount').textContent = data.length;
+        
+        // apply filter in case user had typed something
+        filterTable();
+    } catch (e) {
+        console.error(e);
+        loadingState.classList.add('hidden');
+        emptyState.classList.remove('hidden');
+        emptyState.innerHTML = '<span class="material-symbols-outlined text-5xl block mb-3 text-red-300">error</span><p class="text-sm font-semibold">Gagal memuat data kelas.</p>';
+    }
+}
 
 // ====== FILTER & SEARCH ======
 function filterTable() {
     const q       = document.getElementById('searchInput').value.toLowerCase();
-    const ang     = document.getElementById('filterAngkatan').value;
     const status  = document.getElementById('filterStatus').value.toLowerCase();
-    const sections = document.querySelectorAll('.class-section');
-    let totalCount = 0;
-
-    sections.forEach(sec => {
-        const rows = sec.querySelectorAll('.student-row');
-        let secCount = 0;
-        rows.forEach(row => {
-            const nama    = row.dataset.nama;
-            const nim     = row.dataset.nim.toLowerCase();
-            const angk    = row.dataset.angkatan;
-            const stat    = row.dataset.status.toLowerCase();
-            const matchQ  = !q || nama.includes(q) || nim.includes(q);
-            const matchA  = !ang || angk === ang;
-            const matchS  = !status || stat.includes(status);
-            const show    = matchQ && matchA && matchS;
-            row.style.display = show ? '' : 'none';
-            if (show) secCount++;
-        });
-        sec.style.display = secCount > 0 ? '' : 'none';
-        totalCount += secCount;
+    const tbody = document.getElementById('studentTableBody');
+    if (!tbody) return;
+    
+    let secCount = 0;
+    const rows = tbody.querySelectorAll('.student-row');
+    
+    rows.forEach(row => {
+        const nama    = row.dataset.nama;
+        const nim     = row.dataset.nim.toLowerCase();
+        const stat    = row.dataset.status.toLowerCase();
+        const matchQ  = !q || nama.includes(q) || nim.includes(q);
+        const matchS  = !status || stat.includes(status);
+        const show    = matchQ && matchS;
+        row.style.display = show ? '' : 'none';
+        if (show) secCount++;
     });
 
-    document.getElementById('rowCount').textContent = totalCount;
+    document.getElementById('rowCount').textContent = secCount;
     renumberRows();
 }
 
 function renumberRows() {
-    document.querySelectorAll('.class-section').forEach(sec => {
-        let n = 1;
-        sec.querySelectorAll('.student-row').forEach(row => {
-            if (row.style.display !== 'none') row.querySelector('.row-num').textContent = n++;
-        });
+    const tbody = document.getElementById('studentTableBody');
+    if (!tbody) return;
+    
+    let n = 1;
+    tbody.querySelectorAll('.student-row').forEach(row => {
+        if (row.style.display !== 'none') {
+            const rowNumEl = row.querySelector('.row-num');
+            if (rowNumEl) rowNumEl.textContent = n++;
+        }
     });
 }
 
 function resetFilter() {
     document.getElementById('searchInput').value = '';
-    document.getElementById('filterAngkatan').value = '';
     document.getElementById('filterStatus').value = '';
     filterTable();
 }

@@ -160,6 +160,30 @@ elseif ($type == 'chart_predikat') {
 // Digunakan oleh: akademik.php (tabel data mahasiswa)
 // --------------------------------------------------
 elseif ($type == 'students') {
+    $filter_kelas = $_GET['kelas'] ?? '';
+    
+    $where = [];
+    $params = [];
+    $types = "";
+    
+    if ($filter_kelas !== '') {
+        if (strpos($filter_kelas, 'Alumni (Lulusan') === 0) {
+            preg_match('/Alumni \(Lulusan (.*?)\)/', $filter_kelas, $matches);
+            $tahun = $matches[1] ?? '';
+            $where[] = "(m.status_akademik = 'Lulus' OR m.status_akademik = 'Alumni') AND (SELECT w.tahun_ajaran FROM fact_kelulusan_tkj kt JOIN dim_waktu w ON kt.sk_waktu = w.sk_waktu WHERE kt.sk_mahasiswa = m.sk_mahasiswa LIMIT 1) = ?";
+            $params[] = $tahun;
+            $types .= "s";
+        } elseif ($filter_kelas === 'Alumni') {
+            $where[] = "(m.status_akademik = 'Lulus' OR m.status_akademik = 'Alumni') AND NOT EXISTS (SELECT 1 FROM fact_kelulusan_tkj kt WHERE kt.sk_mahasiswa = m.sk_mahasiswa)";
+        } else {
+            $where[] = "m.kelas = ? AND m.status_akademik = 'Aktif'";
+            $params[] = $filter_kelas;
+            $types .= "s";
+        }
+    }
+    
+    $where_sql = count($where) > 0 ? "WHERE " . implode(" AND ", $where) : "";
+    
     $sql = "SELECT
                 m.sk_mahasiswa,
                 m.nim,
@@ -187,13 +211,98 @@ elseif ($type == 'students') {
                     '-'
                 ) as tahun_lulus
             FROM dim_mahasiswa_tkj m
+            $where_sql
             ORDER BY m.angkatan DESC, m.nama_mahasiswa ASC";
-    $query = $conn->query($sql);
-    if ($query) {
-        while ($row = $query->fetch_assoc()) {
+            
+    $stmt = $conn->prepare($sql);
+    if ($stmt) {
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        while ($row = $result->fetch_assoc()) {
             $response[] = $row;
         }
+        $stmt->close();
+    } else {
+        // Fallback
+        $response = [];
     }
+}
+
+// --------------------------------------------------
+// ENDPOINT: classes (BARU)
+// Digunakan oleh: akademik.php (dropdown kelas)
+// --------------------------------------------------
+elseif ($type == 'classes') {
+    $kelas_list = [];
+    
+    // 1. Get real classes (Aktif)
+    $sql_active = "SELECT DISTINCT kelas FROM dim_mahasiswa_tkj WHERE status_akademik = 'Aktif' AND kelas IS NOT NULL AND kelas != '' ORDER BY kelas ASC";
+    $query = $conn->query($sql_active);
+    if ($query) {
+        while ($row = $query->fetch_assoc()) {
+            $kelas_list[] = $row['kelas'];
+        }
+    }
+    
+    // 2. Get Alumni classes
+    $sql_alumni = "SELECT DISTINCT w.tahun_ajaran 
+                   FROM dim_mahasiswa_tkj m 
+                   JOIN fact_kelulusan_tkj kt ON m.sk_mahasiswa = kt.sk_mahasiswa 
+                   JOIN dim_waktu w ON kt.sk_waktu = w.sk_waktu 
+                   WHERE m.status_akademik = 'Lulus' OR m.status_akademik = 'Alumni'
+                   ORDER BY w.tahun_ajaran DESC";
+    $query2 = $conn->query($sql_alumni);
+    if ($query2) {
+        while ($row = $query2->fetch_assoc()) {
+            $kelas_list[] = "Alumni (Lulusan " . $row['tahun_ajaran'] . ")";
+        }
+    }
+    
+    // 3. Catch alumni without fact data
+    $sql_alumni_no_year = "SELECT COUNT(*) as c FROM dim_mahasiswa_tkj m 
+                           WHERE (m.status_akademik = 'Lulus' OR m.status_akademik = 'Alumni') 
+                           AND m.sk_mahasiswa NOT IN (SELECT sk_mahasiswa FROM fact_kelulusan_tkj)";
+    $res3 = $conn->query($sql_alumni_no_year)->fetch_assoc();
+    if (($res3['c'] ?? 0) > 0) {
+        $kelas_list[] = "Alumni";
+    }
+    
+    $response = $kelas_list;
+}
+
+// --------------------------------------------------
+// ENDPOINT: students_summary (BARU)
+// Digunakan oleh: akademik.php (footer stats)
+// --------------------------------------------------
+elseif ($type == 'students_summary') {
+    $aktif = $conn->query("SELECT COUNT(*) as c FROM dim_mahasiswa_tkj WHERE status_akademik = 'Aktif'")->fetch_assoc()['c'] ?? 0;
+    $alumni = $conn->query("SELECT COUNT(*) as c FROM dim_mahasiswa_tkj WHERE status_akademik = 'Lulus' OR status_akademik = 'Alumni'")->fetch_assoc()['c'] ?? 0;
+    
+    $ipk_max = $conn->query("
+        SELECT MAX(val) as m FROM (
+            SELECT ipk as val FROM fact_ringkasan_akademik
+            UNION ALL
+            SELECT ipk_akhir as val FROM fact_kelulusan_tkj
+        ) t
+    ")->fetch_assoc()['m'] ?? 0;
+    
+    $ipk_min = $conn->query("
+        SELECT MIN(val) as m FROM (
+            SELECT ipk as val FROM fact_ringkasan_akademik WHERE ipk > 0
+            UNION ALL
+            SELECT ipk_akhir as val FROM fact_kelulusan_tkj WHERE ipk_akhir > 0
+        ) t
+    ")->fetch_assoc()['m'] ?? 0;
+    
+    $response = [
+        "total_aktif" => (int)$aktif,
+        "total_alumni" => (int)$alumni,
+        "ipk_tertinggi" => (float)$ipk_max,
+        "ipk_terendah" => (float)$ipk_min
+    ];
 }
 
 // --------------------------------------------------
