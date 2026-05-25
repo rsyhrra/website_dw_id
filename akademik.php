@@ -297,25 +297,57 @@ $summary = is_array($res_summary) ? $res_summary : [
 
         <!-- ====== SUMMARY SECTION ====== -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
-            $stats = [
-                ['label' => 'Total Mahasiswa Aktif', 'val' => $summary['total_aktif'] ?? 0, 'icon' => 'group', 'bg' => 'bg-indigo-50', 'color' => 'text-primary'],
-                ['label' => 'Total Alumni', 'val' => $summary['total_alumni'] ?? 0, 'icon' => 'workspace_premium', 'bg' => 'bg-pink-50', 'color' => 'text-accent-pink'],
-                ['label' => 'IPK Tertinggi', 'val' => number_format((float)($summary['ipk_tertinggi'] ?? 0), 2), 'icon' => 'trending_up', 'bg' => 'bg-emerald-50', 'color' => 'text-emerald-500'],
-                ['label' => 'IPK Terendah', 'val' => number_format((float)($summary['ipk_terendah'] ?? 0), 2), 'icon' => 'trending_down', 'bg' => 'bg-rose-50', 'color' => 'text-rose-500'],
-            ];
-            foreach ($stats as $s): ?>
+            <!-- Card 1: Total Mahasiswa Aktif -->
             <div class="bg-white border border-slate-100 rounded-[2rem] p-6 flex flex-col gap-4 shadow-premium group hover:border-primary transition-all relative overflow-hidden">
                 <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-2xl flex items-center justify-center <?= $s['bg'] ?> <?= $s['color'] ?> group-hover:scale-105 transition-transform">
-                        <span class="material-symbols-outlined text-[22px] font-bold"><?= $s['icon'] ?></span>
+                    <div class="w-12 h-12 rounded-2xl flex items-center justify-center bg-indigo-50 text-primary group-hover:scale-105 transition-transform">
+                        <span class="material-symbols-outlined text-[22px] font-bold">group</span>
                     </div>
                     <div>
-                        <p class="text-[11px] sm:text-xs font-extrabold text-text-muted tracking-wide whitespace-nowrap"><?= $s['label'] ?></p>
-                        <p class="text-2xl font-extrabold text-slate-800 mt-1"><?= $s['val'] ?></p>
+                        <p class="text-[11px] sm:text-xs font-extrabold text-text-muted tracking-wide whitespace-nowrap">Total Mahasiswa Aktif</p>
+                        <p id="stat_total_aktif" class="text-2xl font-extrabold text-slate-800 mt-1"><?= $summary['total_aktif'] ?? 0 ?></p>
                     </div>
                 </div>
             </div>
-            <?php endforeach; ?>
+
+            <!-- Card 2: Total Alumni -->
+            <div class="bg-white border border-slate-100 rounded-[2rem] p-6 flex flex-col gap-4 shadow-premium group hover:border-primary transition-all relative overflow-hidden">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl flex items-center justify-center bg-pink-50 text-accent-pink group-hover:scale-105 transition-transform">
+                        <span class="material-symbols-outlined text-[22px] font-bold">workspace_premium</span>
+                    </div>
+                    <div>
+                        <p class="text-[11px] sm:text-xs font-extrabold text-text-muted tracking-wide whitespace-nowrap">Total Alumni</p>
+                        <p id="stat_total_alumni" class="text-2xl font-extrabold text-slate-800 mt-1"><?= $summary['total_alumni'] ?? 0 ?></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 3: IPK Tertinggi -->
+            <div class="bg-white border border-slate-100 rounded-[2rem] p-6 flex flex-col gap-4 shadow-premium group hover:border-primary transition-all relative overflow-hidden">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl flex items-center justify-center bg-emerald-50 text-emerald-500 group-hover:scale-105 transition-transform">
+                        <span class="material-symbols-outlined text-[22px] font-bold">trending_up</span>
+                    </div>
+                    <div>
+                        <p class="text-[11px] sm:text-xs font-extrabold text-text-muted tracking-wide whitespace-nowrap">IPK Tertinggi</p>
+                        <p id="stat_ipk_tertinggi" class="text-2xl font-extrabold text-slate-800 mt-1"><?= number_format((float)($summary['ipk_tertinggi'] ?? 0), 2) ?></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 4: IPK Terendah -->
+            <div class="bg-white border border-slate-100 rounded-[2rem] p-6 flex flex-col gap-4 shadow-premium group hover:border-primary transition-all relative overflow-hidden">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl flex items-center justify-center bg-rose-50 text-rose-500 group-hover:scale-105 transition-transform">
+                        <span class="material-symbols-outlined text-[22px] font-bold">trending_down</span>
+                    </div>
+                    <div>
+                        <p class="text-[11px] sm:text-xs font-extrabold text-text-muted tracking-wide whitespace-nowrap">IPK Terendah</p>
+                        <p id="stat_ipk_terendah" class="text-2xl font-extrabold text-slate-800 mt-1"><?= number_format((float)($summary['ipk_terendah'] ?? 0), 2) ?></p>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- ====== FOOTER ====== -->
@@ -487,6 +519,34 @@ $summary = is_array($res_summary) ? $res_summary : [
     </div>
 </div>
 
+<!-- ====== CUSTOM CONFIRM MODAL ====== -->
+<div id="confirmModal" class="hidden fixed inset-0 z-[20000] items-center justify-center p-4">
+    <!-- Backdrop with blur -->
+    <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onclick="closeConfirmModal()"></div>
+    
+    <!-- Modal Content -->
+    <div class="glass-modal glass-card rounded-[2.5rem] p-8 shadow-card-shadow max-w-sm w-full relative z-10 scale-95 transition-all duration-300">
+        <div class="text-center">
+            <div class="w-14 h-14 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center mx-auto mb-4 animate-bounce">
+                <span class="material-symbols-outlined text-[28px] font-bold">warning</span>
+            </div>
+            <h3 class="text-base font-extrabold text-slate-800" id="confirmTitle">Konfirmasi Hapus</h3>
+            <p class="text-xs font-semibold text-text-muted mt-2 leading-relaxed" id="confirmMessage">Apakah Anda yakin ingin menghapus data ini? Tindakan ini tidak dapat dibatalkan.</p>
+        </div>
+        
+        <div class="flex gap-3 mt-8">
+            <button onclick="closeConfirmModal()" class="flex-1 py-3.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-2xl font-bold text-xs transition-colors">
+                Batal
+            </button>
+            <button id="confirmYesBtn" class="flex-1 py-3.5 bg-rose-500 hover:bg-rose-600 text-white rounded-2xl font-bold text-xs shadow-rose-200 shadow-lg transition-colors">
+                Ya, Hapus
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="toastContainer" class="fixed top-6 right-6 z-[99999] flex flex-col gap-3 pointer-events-none"></div>
+
 <script>
 // ====== INITIAL LOAD ======
 window.addEventListener('load', () => {
@@ -538,6 +598,83 @@ function toggleDarkMode() {
     }
 }
 
+// ====== CUSTOM TOAST SYSTEM ======
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+    
+    const toast = document.createElement('div');
+    toast.className = `transform translate-x-full transition-all duration-300 ease-out glass-modal pointer-events-auto flex items-center gap-3 px-5 py-4 rounded-2xl shadow-card-shadow max-w-sm border-l-4`;
+    
+    let icon = 'info';
+    let borderClass = 'border-l-indigo-500';
+    let iconColor = 'text-indigo-500';
+    if (type === 'success') {
+        icon = 'check_circle';
+        borderClass = 'border-l-emerald-500';
+        iconColor = 'text-emerald-500';
+    } else if (type === 'error') {
+        icon = 'error';
+        borderClass = 'border-l-rose-500';
+        iconColor = 'text-rose-500';
+    } else if (type === 'warning') {
+        icon = 'warning';
+        borderClass = 'border-l-amber-500';
+        iconColor = 'text-amber-500';
+    }
+    
+    toast.className += ` ${borderClass}`;
+    
+    toast.innerHTML = `
+        <span class="material-symbols-outlined ${iconColor} text-[20px] shrink-0">${icon}</span>
+        <div class="text-xs font-bold text-slate-800 pr-4">${message}</div>
+        <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-slate-600 transition-colors ml-auto shrink-0">
+            <span class="material-symbols-outlined text-[16px]">close</span>
+        </button>
+    `;
+    
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.classList.remove('translate-x-full');
+    }, 10);
+    
+    setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-x-full');
+        setTimeout(() => {
+            toast.remove();
+        }, 300);
+    }, 4000);
+}
+
+// ====== CUSTOM CONFIRM SYSTEM ======
+let confirmAction = null;
+function showConfirm(title, message, onConfirm) {
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMessage').textContent = message;
+    
+    const modal = document.getElementById('confirmModal');
+    modal.classList.replace('hidden', 'flex');
+    setTimeout(() => {
+        modal.querySelector('.glass-modal').classList.replace('scale-95', 'scale-100');
+    }, 10);
+    
+    confirmAction = onConfirm;
+}
+
+function closeConfirmModal() {
+    const modal = document.getElementById('confirmModal');
+    modal.querySelector('.glass-modal').classList.replace('scale-100', 'scale-95');
+    setTimeout(() => {
+        modal.classList.replace('flex', 'hidden');
+    }, 200);
+}
+
+document.getElementById('confirmYesBtn').addEventListener('click', () => {
+    if (confirmAction) confirmAction();
+    closeConfirmModal();
+});
+
 // Close dropdown on outside click
 document.addEventListener('click', function() {
     const dropdown = document.getElementById('profileDropdown');
@@ -548,12 +685,32 @@ document.addEventListener('click', function() {
 let activeChart = null;
 let crudMode = 'add';
 
+async function loadSummaryStats(kelas) {
+    try {
+        const res = await fetch(`<?= API_BASE ?>?type=students_summary&kelas=${encodeURIComponent(kelas)}`, {
+            headers: { 'key': '<?= API_KEY ?>' }
+        });
+        const json = await res.json();
+        const stats = json.results || { total_aktif: 0, total_alumni: 0, ipk_tertinggi: 0, ipk_terendah: 0 };
+        
+        document.getElementById('stat_total_aktif').textContent = stats.total_aktif;
+        document.getElementById('stat_total_alumni').textContent = stats.total_alumni;
+        document.getElementById('stat_ipk_tertinggi').textContent = parseFloat(stats.ipk_tertinggi || 0).toFixed(2);
+        document.getElementById('stat_ipk_terendah').textContent = parseFloat(stats.ipk_terendah || 0).toFixed(2);
+    } catch (e) {
+        console.error('Error loading stats summary:', e);
+    }
+}
+
 async function loadStudents() {
     const kelas = document.getElementById('classSelector').value;
     const tableContainer = document.getElementById('tableContainer');
     const emptyState = document.getElementById('emptyState');
     const loadingState = document.getElementById('loadingState');
     const tbody = document.getElementById('studentTableBody');
+    
+    // Dynamically update statistics cards for this class/alumni or globally
+    loadSummaryStats(kelas);
     
     if (!kelas) {
         tableContainer.classList.add('hidden');
@@ -676,7 +833,8 @@ function renumberRows() {
 function resetFilter() {
     document.getElementById('searchInput').value = '';
     document.getElementById('filterStatus').value = '';
-    filterTable();
+    document.getElementById('classSelector').value = '';
+    loadStudents();
 }
 
 // ====== CRUD MODAL ======
@@ -730,40 +888,41 @@ async function saveStudent(e) {
         });
         const json = await res.json();
         if (json.status === 'success' || json.message) {
-            alert(json.message || 'Berhasil menyimpan data');
-            location.reload();
+            showToast(json.message || 'Berhasil menyimpan data', 'success');
+            closeCrudModal();
+            loadStudents();
         } else {
-            alert('Error: ' + json.message);
+            showToast('Error: ' + json.message, 'error');
         }
     } catch (err) {
         console.error("Save Student Error:", err);
-        alert('Gagal menghubungi server.');
+        showToast('Gagal menghubungi server.', 'error');
     }
 }
 
 async function deleteStudent(sk) {
-    if (!confirm('Yakin ingin menghapus data mahasiswa ini?')) return;
-    
-    const formData = new FormData();
-    formData.append('sk_mahasiswa', sk);
-    
-    try {
-        const res = await fetch(`<?= API_BASE ?>?type=delete_student`, {
-            method: 'POST',
-            headers: { 'key': '<?= API_KEY ?>' },
-            body: formData
-        });
-        const json = await res.json();
-        if (json.status === 'success' || json.message) {
-            alert(json.message || 'Berhasil menghapus data');
-            location.reload();
-        } else {
-            alert('Error: ' + json.message);
+    showConfirm('Konfirmasi Hapus', 'Yakin ingin menghapus data mahasiswa ini?', async () => {
+        const formData = new FormData();
+        formData.append('sk_mahasiswa', sk);
+        
+        try {
+            const res = await fetch(`<?= API_BASE ?>?type=delete_student`, {
+                method: 'POST',
+                headers: { 'key': '<?= API_KEY ?>' },
+                body: formData
+            });
+            const json = await res.json();
+            if (json.status === 'success' || json.message) {
+                showToast(json.message || 'Berhasil menghapus data', 'success');
+                loadStudents();
+            } else {
+                showToast('Error: ' + json.message, 'error');
+            }
+        } catch (err) {
+            console.error("Delete Student Error:", err);
+            showToast('Gagal menghubungi server.', 'error');
         }
-    } catch (err) {
-        console.error("Delete Student Error:", err);
-        alert('Gagal menghubungi server.');
-    }
+    });
 }
 
 // ====== MODAL GRAFIK ======

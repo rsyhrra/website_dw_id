@@ -176,7 +176,7 @@ elseif ($type == 'students') {
         } elseif ($filter_kelas === 'Alumni') {
             $where[] = "(m.status_akademik = 'Lulus' OR m.status_akademik = 'Alumni') AND NOT EXISTS (SELECT 1 FROM fact_kelulusan_tkj kt WHERE kt.sk_mahasiswa = m.sk_mahasiswa)";
         } else {
-            $where[] = "m.kelas = ? AND m.status_akademik = 'Aktif'";
+            $where[] = "m.kelas = ?";
             $params[] = $filter_kelas;
             $types .= "s";
         }
@@ -212,7 +212,7 @@ elseif ($type == 'students') {
                 ) as tahun_lulus
             FROM dim_mahasiswa_tkj m
             $where_sql
-            ORDER BY m.angkatan DESC, m.nama_mahasiswa ASC";
+            ORDER BY m.nim ASC";
             
     $stmt = $conn->prepare($sql);
     if ($stmt) {
@@ -278,31 +278,117 @@ elseif ($type == 'classes') {
 // Digunakan oleh: akademik.php (footer stats)
 // --------------------------------------------------
 elseif ($type == 'students_summary') {
-    $aktif = $conn->query("SELECT COUNT(*) as c FROM dim_mahasiswa_tkj WHERE status_akademik = 'Aktif'")->fetch_assoc()['c'] ?? 0;
-    $alumni = $conn->query("SELECT COUNT(*) as c FROM dim_mahasiswa_tkj WHERE status_akademik = 'Lulus' OR status_akademik = 'Alumni'")->fetch_assoc()['c'] ?? 0;
+    $filter_kelas = $_GET['kelas'] ?? '';
     
-    $ipk_max = $conn->query("
-        SELECT MAX(val) as m FROM (
-            SELECT ipk as val FROM fact_ringkasan_akademik
-            UNION ALL
-            SELECT ipk_akhir as val FROM fact_kelulusan_tkj
-        ) t
-    ")->fetch_assoc()['m'] ?? 0;
-    
-    $ipk_min = $conn->query("
-        SELECT MIN(val) as m FROM (
-            SELECT ipk as val FROM fact_ringkasan_akademik WHERE ipk > 0
-            UNION ALL
-            SELECT ipk_akhir as val FROM fact_kelulusan_tkj WHERE ipk_akhir > 0
-        ) t
-    ")->fetch_assoc()['m'] ?? 0;
-    
-    $response = [
-        "total_aktif" => (int)$aktif,
-        "total_alumni" => (int)$alumni,
-        "ipk_tertinggi" => (float)$ipk_max,
-        "ipk_terendah" => (float)$ipk_min
-    ];
+    if ($filter_kelas !== '') {
+        $where = [];
+        $params = [];
+        $types = "";
+        
+        if (strpos($filter_kelas, 'Alumni (Lulusan') === 0) {
+            preg_match('/Alumni \(Lulusan (.*?)\)/', $filter_kelas, $matches);
+            $tahun = $matches[1] ?? '';
+            $where[] = "(m.status_akademik = 'Lulus' OR m.status_akademik = 'Alumni') AND (SELECT w.tahun_ajaran FROM fact_kelulusan_tkj kt JOIN dim_waktu w ON kt.sk_waktu = w.sk_waktu WHERE kt.sk_mahasiswa = m.sk_mahasiswa LIMIT 1) = ?";
+            $params[] = $tahun;
+            $types .= "s";
+        } elseif ($filter_kelas === 'Alumni') {
+            $where[] = "(m.status_akademik = 'Lulus' OR m.status_akademik = 'Alumni') AND NOT EXISTS (SELECT 1 FROM fact_kelulusan_tkj kt WHERE kt.sk_mahasiswa = m.sk_mahasiswa)";
+        } else {
+            $where[] = "m.kelas = ?";
+            $params[] = $filter_kelas;
+            $types .= "s";
+        }
+        
+        $where_sql = count($where) > 0 ? "WHERE " . implode(" AND ", $where) : "";
+        
+        $total_active = 0;
+        $total_alumni = 0;
+        
+        $count_sql = "SELECT m.status_akademik, COUNT(*) as c FROM dim_mahasiswa_tkj m $where_sql GROUP BY m.status_akademik";
+        $stmt_count = $conn->prepare($count_sql);
+        if ($stmt_count) {
+            if (!empty($params)) {
+                $stmt_count->bind_param($types, ...$params);
+            }
+            $stmt_count->execute();
+            $res_count = $stmt_count->get_result();
+            while ($row = $res_count->fetch_assoc()) {
+                $status_l = strtolower($row['status_akademik']);
+                if ($status_l === 'aktif') {
+                    $total_active += $row['c'];
+                } elseif ($status_l === 'lulus' || $status_l === 'alumni') {
+                    $total_alumni += $row['c'];
+                }
+            }
+            $stmt_count->close();
+        }
+        
+        $ipk_sql = "
+            SELECT 
+                MAX(current_ipk) as max_ipk,
+                MIN(NULLIF(current_ipk, 0)) as min_ipk
+            FROM (
+                SELECT 
+                    COALESCE(
+                        (SELECT ipk FROM fact_ringkasan_akademik ra
+                         WHERE ra.sk_mahasiswa = m.sk_mahasiswa
+                         ORDER BY id_fact_akademik DESC LIMIT 1),
+                        (SELECT ipk_akhir FROM fact_kelulusan_tkj kt
+                         WHERE kt.sk_mahasiswa = m.sk_mahasiswa LIMIT 1),
+                        0
+                    ) as current_ipk
+                FROM dim_mahasiswa_tkj m
+                $where_sql
+            ) t";
+        
+        $ipk_max = 0;
+        $ipk_min = 0;
+        
+        $stmt_ipk = $conn->prepare($ipk_sql);
+        if ($stmt_ipk) {
+            if (!empty($params)) {
+                $stmt_ipk->bind_param($types, ...$params);
+            }
+            $stmt_ipk->execute();
+            $res_ipk = $stmt_ipk->get_result()->fetch_assoc();
+            $ipk_max = $res_ipk['max_ipk'] ?? 0;
+            $ipk_min = $res_ipk['min_ipk'] ?? 0;
+            $stmt_ipk->close();
+        }
+        
+        $response = [
+            "total_aktif" => (int)$total_active,
+            "total_alumni" => (int)$total_alumni,
+            "ipk_tertinggi" => (float)$ipk_max,
+            "ipk_terendah" => (float)$ipk_min
+        ];
+    } else {
+        $aktif = $conn->query("SELECT COUNT(*) as c FROM dim_mahasiswa_tkj WHERE status_akademik = 'Aktif'")->fetch_assoc()['c'] ?? 0;
+        $alumni = $conn->query("SELECT COUNT(*) as c FROM dim_mahasiswa_tkj WHERE status_akademik = 'Lulus' OR status_akademik = 'Alumni'")->fetch_assoc()['c'] ?? 0;
+        
+        $ipk_max = $conn->query("
+            SELECT MAX(val) as m FROM (
+                SELECT ipk as val FROM fact_ringkasan_akademik
+                UNION ALL
+                SELECT ipk_akhir as val FROM fact_kelulusan_tkj
+            ) t
+        ")->fetch_assoc()['m'] ?? 0;
+        
+        $ipk_min = $conn->query("
+            SELECT MIN(val) as m FROM (
+                SELECT ipk as val FROM fact_ringkasan_akademik WHERE ipk > 0
+                UNION ALL
+                SELECT ipk_akhir as val FROM fact_kelulusan_tkj WHERE ipk_akhir > 0
+            ) t
+        ")->fetch_assoc()['m'] ?? 0;
+        
+        $response = [
+            "total_aktif" => (int)$aktif,
+            "total_alumni" => (int)$alumni,
+            "ipk_tertinggi" => (float)$ipk_max,
+            "ipk_terendah" => (float)$ipk_min
+        ];
+    }
 }
 
 // --------------------------------------------------
