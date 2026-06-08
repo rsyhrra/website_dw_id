@@ -1,6 +1,4 @@
 <?php
-// File: api_dw_tkj.php
-// Versi perbaikan: Fix SQL Injection + tambah endpoint chart_ipk, chart_predikat, search
 
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
@@ -15,10 +13,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 include 'db.php';
 
-// ============================================================
-// SECURITY FIX: Gunakan Prepared Statement untuk cek API Key
-// (sebelumnya: rentan SQL Injection karena $client_key langsung di-inject)
-// ============================================================
 $headers = function_exists('apache_request_headers') ? apache_request_headers() : [];
 $client_key = trim($headers['key'] ?? $headers['Key'] ?? $_SERVER['HTTP_KEY'] ?? '');
 
@@ -51,11 +45,76 @@ $response = [];
 // Digunakan oleh: index.php (cards statistik)
 // --------------------------------------------------
 if ($type == 'summary') {
-    $mhs      = $conn->query("SELECT COUNT(*) as total FROM dim_mahasiswa_tkj")->fetch_assoc();
-    $ipk      = $conn->query("SELECT ROUND(AVG(ipk), 2) as rata FROM fact_ringkasan_akademik")->fetch_assoc();
-    $cumlaude = $conn->query("SELECT COUNT(*) as total FROM fact_kelulusan_tkj WHERE predikat LIKE '%Cum Laude%'")->fetch_assoc();
+    $angkatan = isset($_GET['angkatan']) ? intval($_GET['angkatan']) : 0;
+    $kelas    = isset($_GET['kelas']) ? trim($_GET['kelas']) : '';
 
-    // Get unique angkatan
+    $where_clauses = [];
+    $params = [];
+    $types = "";
+
+    if ($angkatan > 0) {
+        $where_clauses[] = "m.angkatan = ?";
+        $params[] = $angkatan;
+        $types .= "i";
+    }
+    if ($kelas !== '') {
+        $where_clauses[] = "m.kelas = ?";
+        $params[] = $kelas;
+        $types .= "s";
+    }
+
+    $where_sql = "";
+    if (count($where_clauses) > 0) {
+        $where_sql = "WHERE " . implode(" AND ", $where_clauses);
+    }
+
+    // 1. Total Mahasiswa
+    $mhs_sql = "SELECT COUNT(*) as total FROM dim_mahasiswa_tkj m $where_sql";
+    $stmt_mhs = $conn->prepare($mhs_sql);
+    if ($stmt_mhs) {
+        if (count($params) > 0) {
+            $stmt_mhs->bind_param($types, ...$params);
+        }
+        $stmt_mhs->execute();
+        $mhs = $stmt_mhs->get_result()->fetch_assoc();
+        $stmt_mhs->close();
+    } else {
+        $mhs = ["total" => 0];
+    }
+
+    // 2. Rata-rata IPK
+    $ipk_sql = "SELECT ROUND(AVG(f.ipk), 2) as rata FROM fact_ringkasan_akademik f JOIN dim_mahasiswa_tkj m ON f.sk_mahasiswa = m.sk_mahasiswa $where_sql";
+    $stmt_ipk = $conn->prepare($ipk_sql);
+    if ($stmt_ipk) {
+        if (count($params) > 0) {
+            $stmt_ipk->bind_param($types, ...$params);
+        }
+        $stmt_ipk->execute();
+        $ipk = $stmt_ipk->get_result()->fetch_assoc();
+        $stmt_ipk->close();
+    } else {
+        $ipk = ["rata" => 0];
+    }
+
+    // 3. Total Cum Laude
+    $where_cumlaude = "";
+    if (count($where_clauses) > 0) {
+        $where_cumlaude = "AND " . implode(" AND ", $where_clauses);
+    }
+    $cumlaude_sql = "SELECT COUNT(*) as total FROM fact_kelulusan_tkj f JOIN dim_mahasiswa_tkj m ON f.sk_mahasiswa = m.sk_mahasiswa WHERE f.predikat LIKE '%Cum Laude%' $where_cumlaude";
+    $stmt_cum = $conn->prepare($cumlaude_sql);
+    if ($stmt_cum) {
+        if (count($params) > 0) {
+            $stmt_cum->bind_param($types, ...$params);
+        }
+        $stmt_cum->execute();
+        $cumlaude = $stmt_cum->get_result()->fetch_assoc();
+        $stmt_cum->close();
+    } else {
+        $cumlaude = ["total" => 0];
+    }
+
+    // Get unique angkatan (unfiltered)
     $angkatan_query = $conn->query("SELECT DISTINCT angkatan FROM dim_mahasiswa_tkj WHERE angkatan IS NOT NULL ORDER BY angkatan DESC");
     $angkatan_list = [];
     if ($angkatan_query) {
@@ -64,7 +123,7 @@ if ($type == 'summary') {
         }
     }
 
-    // Get unique kelas
+    // Get unique kelas (unfiltered)
     $kelas_query = $conn->query("SELECT DISTINCT kelas FROM dim_mahasiswa_tkj WHERE kelas IS NOT NULL AND kelas != '' ORDER BY kelas ASC");
     $kelas_list = [];
     if ($kelas_query) {
@@ -497,29 +556,151 @@ elseif ($type == 'delete_student') {
 }
 
 // --------------------------------------------------
-// ENDPOINT: search  ← BARU: untuk pencarian jurnal/referensi
+// ENDPOINT: comparison (OLAP Slice & Dice per Kelas)
+// Digunakan oleh: laporan.php
 // --------------------------------------------------
-elseif ($type == 'search') {
-    $keyword = isset($_GET['q']) ? '%' . trim($_GET['q']) . '%' : '%';
-    // Sesuaikan nama tabel/kolom dengan database kamu
-    $sql = "SELECT judul, penulis, sumber, tahun, url_pdf
-            FROM referensi_akademik
-            WHERE judul LIKE ? OR penulis LIKE ?
-            ORDER BY tahun DESC
-            LIMIT 10";
-    $stmt3 = $conn->prepare($sql);
-    if ($stmt3) {
-        $stmt3->bind_param("ss", $keyword, $keyword);
-        $stmt3->execute();
-        $result = $stmt3->get_result();
-        while ($row = $result->fetch_assoc()) {
+elseif ($type == 'comparison') {
+    $sql = "SELECT
+                m.kelas,
+                COUNT(DISTINCT m.sk_mahasiswa) as total_mahasiswa,
+                ROUND(AVG(f.ipk), 2) as avg_ipk,
+                MAX(f.ipk) as max_ipk,
+                MIN(NULLIF(f.ipk, 0)) as min_ipk,
+                COUNT(DISTINCT CASE WHEN m.status_akademik = 'Aktif' THEN m.sk_mahasiswa END) as total_aktif,
+                COUNT(DISTINCT CASE WHEN m.status_akademik IN ('Lulus','Alumni') THEN m.sk_mahasiswa END) as total_alumni
+            FROM dim_mahasiswa_tkj m
+            LEFT JOIN fact_ringkasan_akademik f ON m.sk_mahasiswa = f.sk_mahasiswa
+            WHERE m.kelas IS NOT NULL AND m.kelas != ''
+            GROUP BY m.kelas
+            ORDER BY m.kelas ASC";
+    $q = $conn->query($sql);
+    if ($q) {
+        while ($row = $q->fetch_assoc()) {
+            $response[] = [
+                'kelas'           => $row['kelas'],
+                'total_mahasiswa' => (int)$row['total_mahasiswa'],
+                'avg_ipk'         => (float)$row['avg_ipk'],
+                'max_ipk'         => (float)$row['max_ipk'],
+                'min_ipk'         => (float)($row['min_ipk'] ?? 0),
+                'total_aktif'     => (int)$row['total_aktif'],
+                'total_alumni'    => (int)$row['total_alumni'],
+            ];
+        }
+    }
+}
+
+// --------------------------------------------------
+// ENDPOINT: tren_angkatan (Roll-Up Tren IPK per Angkatan)
+// Digunakan oleh: tren.php
+// --------------------------------------------------
+elseif ($type == 'tren_angkatan') {
+    $angkatan = isset($_GET['angkatan']) ? intval($_GET['angkatan']) : 0;
+    $where = $angkatan > 0 ? "WHERE m.angkatan = $angkatan" : "";
+
+    $sql = "SELECT
+                m.angkatan,
+                w.sk_waktu,
+                CONCAT(w.tipe_semester, ' ', w.tahun_ajaran) AS label_semester,
+                ROUND(AVG(f.ipk), 2) AS avg_ipk,
+                ROUND(AVG(f.ips), 2) AS avg_ips,
+                COUNT(DISTINCT m.sk_mahasiswa) AS jumlah_mhs
+            FROM fact_ringkasan_akademik f
+            JOIN dim_mahasiswa_tkj m ON f.sk_mahasiswa = m.sk_mahasiswa
+            JOIN dim_waktu w ON f.sk_waktu = w.sk_waktu
+            $where
+            GROUP BY m.angkatan, w.sk_waktu, w.tipe_semester, w.tahun_ajaran
+            ORDER BY m.angkatan ASC, w.sk_waktu ASC";
+
+    $q = $conn->query($sql);
+    if ($q) {
+        while ($row = $q->fetch_assoc()) {
+            $response[] = [
+                'angkatan'      => (int)$row['angkatan'],
+                'sk_waktu'      => (int)$row['sk_waktu'],
+                'label'         => $row['label_semester'],
+                'avg_ipk'       => (float)$row['avg_ipk'],
+                'avg_ips'       => (float)$row['avg_ips'],
+                'jumlah_mhs'    => (int)$row['jumlah_mhs'],
+            ];
+        }
+    }
+}
+
+// --------------------------------------------------
+// ENDPOINT: ranking (Top Mahasiswa per Kelas)
+// Digunakan oleh: laporan.php
+// --------------------------------------------------
+elseif ($type == 'ranking') {
+    $kelas = isset($_GET['kelas']) ? trim($_GET['kelas']) : '';
+    $limit = isset($_GET['limit']) ? intval($_GET['limit']) : 10;
+    $where = $kelas !== '' ? "AND m.kelas = ?" : "";
+
+    $sql = "SELECT
+                m.sk_mahasiswa,
+                m.nim,
+                m.nama_mahasiswa,
+                m.kelas,
+                m.angkatan,
+                m.status_akademik,
+                COALESCE(
+                    (SELECT ipk FROM fact_ringkasan_akademik ra
+                     WHERE ra.sk_mahasiswa = m.sk_mahasiswa
+                     ORDER BY id_fact_akademik DESC LIMIT 1),
+                    (SELECT ipk_akhir FROM fact_kelulusan_tkj kt
+                     WHERE kt.sk_mahasiswa = m.sk_mahasiswa LIMIT 1),
+                    0
+                ) as ipk_terakhir,
+                COALESCE(
+                    (SELECT predikat FROM fact_kelulusan_tkj kt
+                     WHERE kt.sk_mahasiswa = m.sk_mahasiswa LIMIT 1),
+                    '-'
+                ) as predikat
+            FROM dim_mahasiswa_tkj m
+            WHERE 1=1 $where
+            ORDER BY ipk_terakhir DESC
+            LIMIT ?";
+
+    $stmt_r = $conn->prepare($sql);
+    if ($stmt_r) {
+        if ($kelas !== '') {
+            $stmt_r->bind_param("si", $kelas, $limit);
+        } else {
+            $stmt_r->bind_param("i", $limit);
+        }
+        $stmt_r->execute();
+        $res = $stmt_r->get_result();
+        $rank = 1;
+        while ($row = $res->fetch_assoc()) {
+            $row['rank'] = $rank++;
             $response[] = $row;
         }
-        $stmt3->close();
+        $stmt_r->close();
     }
-    // Jika tabel referensi_akademik belum ada, kembalikan array kosong
-    if (empty($response)) {
-        $response = [];
+}
+
+// --------------------------------------------------
+// ENDPOINT: predikat_per_kelas (Distribusi Predikat per Kelas)
+// Digunakan oleh: laporan.php
+// --------------------------------------------------
+elseif ($type == 'predikat_per_kelas') {
+    $sql = "SELECT
+                m.kelas,
+                k.predikat,
+                COUNT(*) as jumlah
+            FROM fact_kelulusan_tkj k
+            JOIN dim_mahasiswa_tkj m ON k.sk_mahasiswa = m.sk_mahasiswa
+            WHERE m.kelas IS NOT NULL AND m.kelas != ''
+            GROUP BY m.kelas, k.predikat
+            ORDER BY m.kelas ASC, jumlah DESC";
+    $q = $conn->query($sql);
+    if ($q) {
+        while ($row = $q->fetch_assoc()) {
+            $response[] = [
+                'kelas'    => $row['kelas'],
+                'predikat' => $row['predikat'],
+                'jumlah'   => (int)$row['jumlah'],
+            ];
+        }
     }
 }
 
