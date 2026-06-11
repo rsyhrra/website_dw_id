@@ -9,17 +9,36 @@ if ($dir === '/') {
     $dir = '';
 }
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 define('API_BASE', $protocol . $host . $dir . "/api_dw_tkj.php"); 
 
 // Include database to fetch the current API Key dynamically
 require_once 'db.php';
 $db_key = "TKJ-PNUP-2026-SECRET"; // Default fallback
 if (isset($conn) && !$conn->connect_error) {
-    $res_key = $conn->query("SELECT key_token FROM admin WHERE id_user = 1 LIMIT 1");
-    if ($res_key) {
-        $row_key = $res_key->fetch_assoc();
-        if (!empty($row_key['key_token'])) {
-            $db_key = $row_key['key_token'];
+    if (isset($_SESSION['username'])) {
+        $stmt_key = $conn->prepare("SELECT key_token FROM admin WHERE nama = ? LIMIT 1");
+        if ($stmt_key) {
+            $stmt_key->bind_param("s", $_SESSION['username']);
+            $stmt_key->execute();
+            $res_key = $stmt_key->get_result();
+            if ($res_key && $row_key = $res_key->fetch_assoc()) {
+                if (!empty($row_key['key_token'])) {
+                    $db_key = $row_key['key_token'];
+                }
+            }
+            $stmt_key->close();
+        }
+    } else {
+        $res_key = $conn->query("SELECT key_token FROM admin WHERE id_user = 1 LIMIT 1");
+        if ($res_key) {
+            $row_key = $res_key->fetch_assoc();
+            if (!empty($row_key['key_token'])) {
+                $db_key = $row_key['key_token'];
+            }
         }
     }
 }

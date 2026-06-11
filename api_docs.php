@@ -17,9 +17,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     
     if ($_POST['action'] === 'generate_key') {
         $new_key = "TKJ-PNUP-" . strtoupper(bin2hex(random_bytes(10)));
-        $stmt = $conn->prepare("UPDATE admin SET key_token = ? WHERE id_user = 1");
+        $stmt = $conn->prepare("UPDATE admin SET key_token = ? WHERE nama = ?");
         if ($stmt) {
-            $stmt->bind_param("s", $new_key);
+            $stmt->bind_param("ss", $new_key, $_SESSION['username']);
             if ($stmt->execute()) {
                 // Wariskan log/kuota API key lama ke API key baru
                 $stmt_log = $conn->prepare("UPDATE api_requests_log SET api_key = ? WHERE api_key = ?");
@@ -339,17 +339,17 @@ if ($stmt) {
                 </button>
                 <div class="relative flex items-center">
                     <button onclick="toggleProfileDropdown(event)" class="w-9 h-9 rounded-full p-0.5 bg-slate-900/30 hover:scale-105 transition-transform outline-none focus:outline-none border border-white/10">
-                        <img alt="Profile" class="w-full h-full rounded-full object-cover" src="https://ui-avatars.com/api/?name=Admin+TKJ&background=1e1b4b&color=6366f1"/>
+                        <img alt="Profile" class="w-full h-full rounded-full object-cover" src="https://ui-avatars.com/api/?name=<?= urlencode($_SESSION['username'] ?? 'Admin TKJ') ?>&background=1e1b4b&color=6366f1"/>
                     </button>
                     
                     <!-- Profile Dropdown Box -->
                     <div id="profileDropdown" class="hidden absolute right-0 top-12 w-64 glass-card rounded-2xl p-5 flex flex-col gap-4 z-[9999]">
                         <div class="flex items-center gap-3 border-b border-white/10 pb-3">
                             <div class="w-10 h-10 rounded-full p-0.5 bg-slate-900/30">
-                                <img alt="Profile" class="w-full h-full rounded-full object-cover" src="https://ui-avatars.com/api/?name=Admin+TKJ&background=1e1b4b&color=6366f1"/>
+                                <img alt="Profile" class="w-full h-full rounded-full object-cover" src="https://ui-avatars.com/api/?name=<?= urlencode($_SESSION['username'] ?? 'Admin TKJ') ?>&background=1e1b4b&color=6366f1"/>
                             </div>
                             <div class="text-left">
-                                <h4 class="text-xs font-extrabold text-slate-100">Admin TKJ</h4>
+                                <h4 class="text-xs font-extrabold text-slate-100"><?= htmlspecialchars($_SESSION['username'] ?? 'Admin TKJ') ?></h4>
                                 <span class="text-[9px] font-bold text-text-muted bg-white/5 px-2 py-0.5 rounded-full mt-0.5 inline-block">Administrator</span>
                             </div>
                         </div>

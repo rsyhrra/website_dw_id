@@ -358,7 +358,7 @@ $kelas_list = $summary['kelas_list'] ?? [];
                             <span id="themeIcon" class="material-symbols-outlined text-[18px] text-amber-400">light_mode</span>
                         </button>
                         <button onclick="toggleProfileDropdown(event)" class="w-9 h-9 rounded-full p-0.5 bg-slate-900/30 hover:scale-105 transition-transform outline-none focus:outline-none border border-white/10">
-                            <img alt="Profile" class="w-full h-full rounded-full object-cover" src="https://ui-avatars.com/api/?name=Admin+TKJ&background=1e1b4b&color=6366f1"/>
+                            <img alt="Profile" class="w-full h-full rounded-full object-cover" src="https://ui-avatars.com/api/?name=<?= urlencode($_SESSION['username'] ?? 'Admin TKJ') ?>&background=1e1b4b&color=6366f1"/>
                         </button>
                     </div>
                 </div>
@@ -369,10 +369,10 @@ $kelas_list = $summary['kelas_list'] ?? [];
         <div id="profileDropdown" class="hidden absolute right-8 top-16 w-64 glass-card rounded-2xl p-5 flex flex-col gap-4 z-[9999]">
             <div class="flex items-center gap-3 border-b border-white/10 pb-3">
                 <div class="w-10 h-10 rounded-full p-0.5 bg-slate-900/30">
-                    <img alt="Profile" class="w-full h-full rounded-full object-cover" src="https://ui-avatars.com/api/?name=Admin+TKJ&background=1e1b4b&color=6366f1"/>
+                    <img alt="Profile" class="w-full h-full rounded-full object-cover" src="https://ui-avatars.com/api/?name=<?= urlencode($_SESSION['username'] ?? 'Admin TKJ') ?>&background=1e1b4b&color=6366f1"/>
                 </div>
                 <div class="text-left">
-                    <h4 class="text-xs font-extrabold text-slate-100">Admin TKJ</h4>
+                    <h4 class="text-xs font-extrabold text-slate-100"><?= htmlspecialchars($_SESSION['username'] ?? 'Admin TKJ') ?></h4>
                     <span class="text-[9px] font-bold text-text-muted bg-white/5 px-2 py-0.5 rounded-full mt-0.5 inline-block">Administrator</span>
                 </div>
             </div>
