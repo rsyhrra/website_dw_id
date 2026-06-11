@@ -8,6 +8,12 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
     exit();
 }
 
+$just_logged_in = false;
+if (isset($_SESSION['just_logged_in']) && $_SESSION['just_logged_in'] === true) {
+    $just_logged_in = true;
+    unset($_SESSION['just_logged_in']);
+}
+
 require_once 'config.php';
 
 // Ambil summary untuk data angkatan list
@@ -23,6 +29,18 @@ $cohort_data = callAPI(API_BASE . "?type=tren_angkatan");
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>Analisis Tren IPK Cohort – TKJ PNUP</title>
+    <script>
+        (function() {
+            const justLoggedIn = <?= $just_logged_in ? 'true' : 'false' ?>;
+            if (justLoggedIn) {
+                sessionStorage.setItem('tab_session_active', '1');
+            } else {
+                if (!sessionStorage.getItem('tab_session_active')) {
+                    window.location.href = 'logout.php';
+                }
+            }
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
     <script>
     tailwind.config = {
@@ -134,10 +152,12 @@ $cohort_data = callAPI(API_BASE . "?type=tren_angkatan");
             border-color: rgba(129, 140, 248, 0.5);
             box-shadow: 0 0 15px rgba(99, 102, 241, 0.25);
         }
-        /* Custom scrollbars */
-        ::-webkit-scrollbar { width: 5px; height: 5px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+        /* Hide scrollbars */
+        ::-webkit-scrollbar { display: none; }
+        * {
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+        }
         /* Preloader */
         #preloader {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -212,7 +232,7 @@ $cohort_data = callAPI(API_BASE . "?type=tren_angkatan");
     </aside>
 
     <!-- Main Content Area -->
-    <main class="flex-1 md:pl-[96px] p-6 md:p-8 pb-28 md:pb-8 w-full min-h-screen flex flex-col gap-6">
+    <main class="flex-1 md:pl-[96px] p-6 md:p-8 pb-28 md:pb-8 w-full min-h-screen flex flex-col gap-6 relative">
 
         <!-- Header / Toolbar -->
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full glass-card rounded-2xl px-6 py-5">
@@ -227,48 +247,49 @@ $cohort_data = callAPI(API_BASE . "?type=tren_angkatan");
                 <button id="themeToggleBtn" onclick="toggleTheme()" class="w-9 h-9 rounded-xl flex items-center justify-center transition-all glass-btn">
                     <span id="themeIcon" class="material-symbols-outlined text-[18px] text-amber-400">light_mode</span>
                 </button>
-                <div class="relative flex items-center">
+                <!-- Admin Avatar -->
+                <div class="flex items-center">
                     <button onclick="toggleProfileDropdown(event)" class="w-9 h-9 rounded-full p-0.5 bg-slate-900/30 hover:scale-105 transition-transform outline-none focus:outline-none border border-white/10">
                         <img alt="Profile" class="w-full h-full rounded-full object-cover" src="https://ui-avatars.com/api/?name=<?= urlencode($_SESSION['username'] ?? 'Admin TKJ') ?>&background=1e1b4b&color=6366f1"/>
                     </button>
-                    
-                    <!-- Profile Dropdown Box -->
-                    <div id="profileDropdown" class="hidden absolute right-0 top-12 w-64 glass-card rounded-2xl p-5 flex flex-col gap-4 z-[9999]">
-                        <div class="flex items-center gap-3 border-b border-white/10 pb-3">
-                            <div class="w-10 h-10 rounded-full p-0.5 bg-slate-900/30">
-                                <img alt="Profile" class="w-full h-full rounded-full object-cover" src="https://ui-avatars.com/api/?name=<?= urlencode($_SESSION['username'] ?? 'Admin TKJ') ?>&background=1e1b4b&color=6366f1"/>
-                            </div>
-                            <div class="text-left">
-                                <h4 class="text-xs font-extrabold text-slate-100"><?= htmlspecialchars($_SESSION['username'] ?? 'Admin TKJ') ?></h4>
-                                <span class="text-[9px] font-bold text-text-muted bg-white/5 px-2 py-0.5 rounded-full mt-0.5 inline-block">Administrator</span>
-                            </div>
-                        </div>
-                        <div class="flex flex-col gap-2">
-                            <a href="index.php" class="flex items-center gap-2.5 py-2 px-3 rounded-xl hover:bg-white/5 text-xs font-bold text-slate-300 hover:text-white transition-all">
-                                <span class="material-symbols-outlined text-[18px]">grid_view</span> Dashboard
-                            </a>
-                            <a href="akademik.php" class="flex items-center gap-2.5 py-2 px-3 rounded-xl hover:bg-white/5 text-xs font-bold text-slate-300 hover:text-white transition-all">
-                                <span class="material-symbols-outlined text-[18px]">group</span> Data Mahasiswa
-                            </a>
-                            <a href="laporan.php" class="flex items-center gap-2.5 py-2 px-3 rounded-xl hover:bg-white/5 text-xs font-bold text-slate-300 hover:text-white transition-all">
-                                <span class="material-symbols-outlined text-[18px]">analytics</span> Perbandingan Kelas
-                            </a>
-                            <a href="tren.php" class="flex items-center gap-2.5 py-2 px-3 rounded-xl hover:bg-white/5 text-xs font-bold text-slate-300 hover:text-white transition-all">
-                                <span class="material-symbols-outlined text-[18px]">timeline</span> Tren IPK Angkatan
-                            </a>
-                            <a href="skema.php" class="flex items-center gap-2.5 py-2 px-3 rounded-xl hover:bg-white/5 text-xs font-bold text-slate-300 hover:text-white transition-all">
-                                <span class="material-symbols-outlined text-[18px]">schema</span> Skema DW
-                            </a>
-                            <a href="api_docs.php" class="flex items-center gap-2.5 py-2 px-3 rounded-xl hover:bg-white/5 text-xs font-bold text-slate-300 hover:text-white transition-all">
-                                <span class="material-symbols-outlined text-[18px]">api</span> Dokumentasi API
-                            </a>
-                        </div>
-                        <a href="logout.php" class="flex items-center gap-2.5 py-2.5 px-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-xs font-bold text-red-400 transition-all justify-center">
-                            <span class="material-symbols-outlined text-[16px]">logout</span> Keluar
-                        </a>
-                    </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Profile Dropdown Box -->
+        <div id="profileDropdown" class="hidden absolute right-6 md:right-8 top-24 w-64 glass-card rounded-2xl p-5 flex flex-col gap-4 z-[9999]">
+            <div class="flex items-center gap-3 border-b border-white/10 pb-3">
+                <div class="w-10 h-10 rounded-full p-0.5 bg-slate-900/30">
+                    <img alt="Profile" class="w-full h-full rounded-full object-cover" src="https://ui-avatars.com/api/?name=<?= urlencode($_SESSION['username'] ?? 'Admin TKJ') ?>&background=1e1b4b&color=6366f1"/>
+                </div>
+                <div class="text-left">
+                    <h4 class="text-xs font-extrabold text-slate-100"><?= htmlspecialchars($_SESSION['username'] ?? 'Admin TKJ') ?></h4>
+                    <span class="text-[9px] font-bold text-text-muted bg-white/5 px-2 py-0.5 rounded-full mt-0.5 inline-block">Administrator</span>
+                </div>
+            </div>
+            <div class="flex flex-col gap-2">
+                <a href="index.php" class="flex items-center gap-2.5 py-2 px-3 rounded-xl hover:bg-white/5 text-xs font-bold text-slate-300 hover:text-white transition-all">
+                    <span class="material-symbols-outlined text-[18px]">grid_view</span> Dashboard
+                </a>
+                <a href="akademik.php" class="flex items-center gap-2.5 py-2 px-3 rounded-xl hover:bg-white/5 text-xs font-bold text-slate-300 hover:text-white transition-all">
+                    <span class="material-symbols-outlined text-[18px]">group</span> Data Mahasiswa
+                </a>
+                <a href="laporan.php" class="flex items-center gap-2.5 py-2 px-3 rounded-xl hover:bg-white/5 text-xs font-bold text-slate-300 hover:text-white transition-all">
+                    <span class="material-symbols-outlined text-[18px]">analytics</span> Perbandingan Kelas
+                </a>
+                <a href="tren.php" class="flex items-center gap-2.5 py-2 px-3 rounded-xl hover:bg-white/5 text-xs font-bold text-slate-300 hover:text-white transition-all">
+                    <span class="material-symbols-outlined text-[18px]">timeline</span> Tren IPK Angkatan
+                </a>
+                <a href="skema.php" class="flex items-center gap-2.5 py-2 px-3 rounded-xl hover:bg-white/5 text-xs font-bold text-slate-300 hover:text-white transition-all">
+                    <span class="material-symbols-outlined text-[18px]">schema</span> Skema DW
+                </a>
+                <a href="api_docs.php" class="flex items-center gap-2.5 py-2 px-3 rounded-xl hover:bg-white/5 text-xs font-bold text-slate-300 hover:text-white transition-all">
+                    <span class="material-symbols-outlined text-[18px]">api</span> Dokumentasi API
+                </a>
+            </div>
+            <a href="logout.php" class="flex items-center gap-2.5 py-2.5 px-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-xs font-bold text-red-400 transition-all justify-center">
+                <span class="material-symbols-outlined text-[16px]">logout</span> Keluar
+            </a>
         </div>
 
         <!-- Main Trend Line Chart -->

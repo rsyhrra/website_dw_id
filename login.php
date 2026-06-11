@@ -33,6 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (password_verify($password, $row['password']) || md5($password) === $row['password']) {
                     $_SESSION['admin_logged_in'] = true;
                     $_SESSION['username'] = $row['nama'];
+                    $_SESSION['just_logged_in'] = true;
                     header("Location: index.php");
                     exit();
                 } else {
@@ -43,6 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($username === 'admin' && $password === 'admin') {
                     $_SESSION['admin_logged_in'] = true;
                     $_SESSION['username'] = $username;
+                    $_SESSION['just_logged_in'] = true;
                     header("Location: index.php");
                     exit();
                 } else {

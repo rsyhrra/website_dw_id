@@ -8,6 +8,12 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
     exit();
 }
 
+$just_logged_in = false;
+if (isset($_SESSION['just_logged_in']) && $_SESSION['just_logged_in'] === true) {
+    $just_logged_in = true;
+    unset($_SESSION['just_logged_in']);
+}
+
 require_once 'config.php';
 
 // Ambil data awal dari API untuk cadangan / SSR
@@ -30,6 +36,18 @@ $kelas_list = $summary['kelas_list'] ?? [];
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>TKJ Academic Analytics Dashboard</title>
+    <script>
+        (function() {
+            const justLoggedIn = <?= $just_logged_in ? 'true' : 'false' ?>;
+            if (justLoggedIn) {
+                sessionStorage.setItem('tab_session_active', '1');
+            } else {
+                if (!sessionStorage.getItem('tab_session_active')) {
+                    window.location.href = 'logout.php';
+                }
+            }
+        })();
+    </script>
     <!-- Use Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script id="tailwind-config">
@@ -179,11 +197,12 @@ $kelas_list = $summary['kelas_list'] ?? [];
             box-shadow: 0 0 15px rgba(99, 102, 241, 0.25);
         }
 
-        /* Custom scrollbars */
-        ::-webkit-scrollbar { width: 5px; height: 5px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+        /* Hide scrollbars */
+        ::-webkit-scrollbar { display: none; }
+        * {
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+        }
         
         /* Preloader */
         #preloader {
@@ -295,7 +314,7 @@ $kelas_list = $summary['kelas_list'] ?? [];
     </aside>
 
     <!-- ====== MAIN CONTENT AREA ====== -->
-    <main class="flex-1 md:pl-[96px] w-full min-h-screen flex flex-col">
+    <main class="flex-1 md:pl-[96px] w-full min-h-screen flex flex-col relative">
 
         <!-- ====== GLASSMORPHIC HEADER & TOOLBAR ====== -->
         <header class="glass-card w-full flex flex-col z-[100] border-t-0 border-x-0 relative">
@@ -366,7 +385,7 @@ $kelas_list = $summary['kelas_list'] ?? [];
         </header>
 
         <!-- PROFILE DROPDOWN BOX -->
-        <div id="profileDropdown" class="hidden absolute right-8 top-16 w-64 glass-card rounded-2xl p-5 flex flex-col gap-4 z-[9999]">
+        <div id="profileDropdown" class="hidden absolute right-8 top-20 w-64 glass-card rounded-2xl p-5 flex flex-col gap-4 z-[9999]">
             <div class="flex items-center gap-3 border-b border-white/10 pb-3">
                 <div class="w-10 h-10 rounded-full p-0.5 bg-slate-900/30">
                     <img alt="Profile" class="w-full h-full rounded-full object-cover" src="https://ui-avatars.com/api/?name=<?= urlencode($_SESSION['username'] ?? 'Admin TKJ') ?>&background=1e1b4b&color=6366f1"/>
