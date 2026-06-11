@@ -333,7 +333,7 @@ $kelas_list = $summary['kelas_list'] ?? [];
                     </div>
 
                     <!-- Section: Canvas Layout -->
-                    <div class="flex items-center gap-2 border-l border-white/10 pl-6">
+                    <div class="hidden md:flex items-center gap-2 border-l border-white/10 pl-6">
                         <span class="text-[9px] font-bold text-text-muted uppercase tracking-wider pr-1">Grid:</span>
                         <div class="flex gap-1 bg-slate-900/30 p-1 rounded-xl border border-white/5">
                             <button onclick="setGridColumns('grid-cols-1 md:grid-cols-2 lg:grid-cols-3')" class="flex items-center gap-1 text-slate-300 hover:text-white rounded-lg px-2.5 py-1.5 text-[10px] font-bold transition-all hover:bg-white/5" title="3 Kolom">
@@ -404,7 +404,7 @@ $kelas_list = $summary['kelas_list'] ?? [];
         <!-- ====== MAIN WORKSPACE LAYOUT ====== -->
         <div class="flex-1 flex flex-col md:flex-row relative">
             <!-- Left/Main Canvas Area -->
-            <div class="flex-1 p-6 md:p-8 flex flex-col gap-6">
+            <div class="flex-1 p-6 md:p-8 pb-28 md:pb-8 flex flex-col gap-6">
                 <!-- Dynamic Grid for Widgets -->
                 <div id="dashboardCanvas" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full items-start">
                     <!-- Widgets are injected dynamically via JavaScript (buildDashboard) -->
@@ -427,7 +427,7 @@ $kelas_list = $summary['kelas_list'] ?? [];
                 </div>
 
                 <!-- Sidebar Body / Content Panes -->
-                <div class="flex-1 p-5 overflow-y-auto flex flex-col gap-6">
+                <div class="flex-1 p-5 pb-28 md:pb-5 overflow-y-auto flex flex-col gap-6">
                     <!-- PANE 1: GLOBAL FILTERS -->
                     <div id="pane-filters" class="flex flex-col gap-5">
                         <div>

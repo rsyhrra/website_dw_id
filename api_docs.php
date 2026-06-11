@@ -21,6 +21,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if ($stmt) {
             $stmt->bind_param("s", $new_key);
             if ($stmt->execute()) {
+                // Wariskan log/kuota API key lama ke API key baru
+                $stmt_log = $conn->prepare("UPDATE api_requests_log SET api_key = ? WHERE api_key = ?");
+                if ($stmt_log) {
+                    $stmt_log->bind_param("ss", $new_key, $apiKey);
+                    $stmt_log->execute();
+                    $stmt_log->close();
+                }
                 echo json_encode(["status" => "success", "new_key" => $new_key]);
             } else {
                 http_response_code(500);
@@ -315,7 +322,7 @@ if ($stmt) {
     </aside>
 
     <!-- Main Content Area -->
-    <main class="flex-1 md:pl-[96px] p-6 md:p-8 w-full min-h-screen flex flex-col gap-6">
+    <main class="flex-1 md:pl-[96px] p-6 md:p-8 pb-28 md:pb-8 w-full min-h-screen flex flex-col gap-6">
 
         <!-- Header -->
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full glass-card rounded-2xl px-6 py-5">
@@ -617,6 +624,9 @@ if ($stmt) {
                         </button>
                         <button onclick="regenerateApiKey()" class="flex-1 text-slate-100 rounded-2xl py-3.5 font-bold text-xs glass-btn uppercase tracking-wider flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-500/20 to-pink-500/20 hover:from-indigo-500/35 hover:to-pink-500/35 border-indigo-500/30">
                             <span class="material-symbols-outlined text-sm">refresh</span> Generate Key Baru
+                        </button>
+                        <button onclick="clearLogs()" class="flex-1 text-slate-100 rounded-2xl py-3.5 font-bold text-xs glass-btn uppercase tracking-wider flex items-center justify-center gap-2 bg-rose-500/10 hover:bg-rose-500/20 border-rose-500/20 text-rose-400">
+                            <span class="material-symbols-outlined text-sm">restart_alt</span> Reset Kuota
                         </button>
                     </div>
 

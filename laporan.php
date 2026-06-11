@@ -213,7 +213,7 @@ $ranking = callAPI(API_BASE . "?type=ranking&kelas=" . urlencode($selected_class
     </aside>
 
     <!-- Main Content Area -->
-    <main class="flex-1 md:pl-[96px] p-6 md:p-8 w-full min-h-screen flex flex-col gap-6">
+    <main class="flex-1 md:pl-[96px] p-6 md:p-8 pb-28 md:pb-8 w-full min-h-screen flex flex-col gap-6">
 
         <!-- Header / Toolbar -->
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 w-full glass-card rounded-2xl px-6 py-5">
