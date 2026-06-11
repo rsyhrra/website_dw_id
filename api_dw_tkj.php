@@ -13,10 +13,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 include 'db.php';
 
+function log_request($conn, $endpoint, $method, $status_code, $api_key) {
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+    $endpoint_clean = substr($endpoint, 0, 255);
+    $method_clean = substr($method, 0, 10);
+    $api_key_clean = substr($api_key, 0, 255);
+    
+    $stmt = $conn->prepare("INSERT INTO api_requests_log (endpoint, method, ip_address, status_code, api_key) VALUES (?, ?, ?, ?, ?)");
+    if ($stmt) {
+        $stmt->bind_param("sssis", $endpoint_clean, $method_clean, $ip, $status_code, $api_key_clean);
+        $stmt->execute();
+        $stmt->close();
+    }
+}
+
 $headers = function_exists('apache_request_headers') ? apache_request_headers() : [];
 $client_key = trim($headers['key'] ?? $headers['Key'] ?? $_SERVER['HTTP_KEY'] ?? '');
+$type = $_GET['type'] ?? '';
 
-// Ganti 'id' menjadi 'id_user' sesuai struktur database Anda
+// Check key validity
 $stmt = $conn->prepare("SELECT id_user FROM admin WHERE key_token = ? LIMIT 1");
 if (!$stmt) {
     http_response_code(500);
@@ -28,11 +43,31 @@ $stmt->execute();
 $stmt->store_result();
 
 if ($stmt->num_rows == 0) {
+    $stmt->close();
+    log_request($conn, $type, $_SERVER['REQUEST_METHOD'], 401, $client_key);
     http_response_code(401);
     echo json_encode(["status" => "error", "message" => "API Key Tidak Valid!"]);
     exit;
 }
 $stmt->close();
+
+// Check rate limit
+$stmt_limit = $conn->prepare("SELECT COUNT(*) FROM api_requests_log WHERE api_key = ?");
+$stmt_limit->bind_param("s", $client_key);
+$stmt_limit->execute();
+$stmt_limit->bind_result($req_count);
+$stmt_limit->fetch();
+$stmt_limit->close();
+
+if ($req_count >= 200) {
+    log_request($conn, $type, $_SERVER['REQUEST_METHOD'], 429, $client_key);
+    http_response_code(429);
+    echo json_encode(["status" => "error", "message" => "Batas limit request (200) telah terlampaui!"]);
+    exit;
+}
+
+// Log success request
+log_request($conn, $type, $_SERVER['REQUEST_METHOD'], 200, $client_key);
 
 // ============================================================
 // ROUTING ENDPOINT
