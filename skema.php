@@ -218,44 +218,117 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
             <div class="overflow-x-auto w-full flex justify-center py-6 bg-slate-950/20 rounded-2xl">
                 <!-- SVG diagram illustrating Star Schema -->
                 <svg width="800" height="420" viewBox="0 0 800 420" fill="none" xmlns="http://www.w3.org/2000/svg" class="max-w-full">
-                    <!-- Lines connecting Dimensions to Facts -->
-                    <path d="M 230 110 L 350 200" stroke="#818cf8" stroke-width="2" stroke-dasharray="4" />
-                    <path d="M 230 310 L 350 220" stroke="#818cf8" stroke-width="2" stroke-dasharray="4" />
-                    <path d="M 570 210 L 470 210" stroke="#818cf8" stroke-width="2" stroke-dasharray="4" />
+                    <defs>
+                        <linearGradient id="headerGrad" x1="0" y1="0" x2="1" y2="0">
+                            <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.2"/>
+                            <stop offset="100%" stop-color="#6366f1" stop-opacity="0.2"/>
+                        </linearGradient>
+                        <linearGradient id="headerGradFact" x1="0" y1="0" x2="1" y2="0">
+                            <stop offset="0%" stop-color="#ec4899" stop-opacity="0.2"/>
+                            <stop offset="100%" stop-color="#f43f5e" stop-opacity="0.2"/>
+                        </linearGradient>
+                    </defs>
 
-                    <!-- Dimension Table: Mahasiswa -->
-                    <rect x="30" y="50" width="200" height="120" rx="12" fill="rgba(99, 102, 241, 0.12)" stroke="#6366f1" stroke-width="1.5"/>
-                    <text x="130" y="75" fill="#f8fafc" font-size="11" font-weight="bold" text-anchor="middle">dim_mahasiswa_tkj</text>
-                    <line x1="30" y1="85" x2="230" y2="85" stroke="#6366f1" stroke-width="1"/>
-                    <text x="45" y="105" fill="#94a3b8" font-size="10" font-family="monospace">🔑 sk_mahasiswa (PK)</text>
-                    <text x="45" y="120" fill="#94a3b8" font-size="10">🔹 nim</text>
-                    <text x="45" y="135" fill="#94a3b8" font-size="10">🔹 nama_mahasiswa</text>
-                    <text x="45" y="150" fill="#94a3b8" font-size="10">🔹 status_akademik</text>
+                    <!-- Connection Lines with End Markers or just clean line connections -->
+                    <!-- dim_mahasiswa_tkj.sk_mahasiswa -> fact_kelulusan_tkj.sk_mahasiswa (Green) -->
+                    <path d="M 260 95 L 540 115" stroke="#4ade80" stroke-width="2" stroke-linecap="round" />
+                    <!-- dim_mahasiswa_tkj.sk_mahasiswa -> fact_ringkasan_akademik.sk_mahasiswa (Green) -->
+                    <path d="M 260 95 L 540 315" stroke="#4ade80" stroke-width="2" stroke-linecap="round" />
+                    
+                    <!-- dim_waktu.sk_waktu -> fact_kelulusan_tkj.sk_waktu (Blue) -->
+                    <path d="M 260 305 L 540 135" stroke="#6366f1" stroke-width="2" stroke-linecap="round" />
+                    <!-- dim_waktu.sk_waktu -> fact_ringkasan_akademik.sk_waktu (Blue) -->
+                    <path d="M 260 305 L 540 335" stroke="#6366f1" stroke-width="2" stroke-linecap="round" />
 
-                    <!-- Dimension Table: Waktu -->
-                    <rect x="30" y="250" width="200" height="120" rx="12" fill="rgba(99, 102, 241, 0.12)" stroke="#6366f1" stroke-width="1.5"/>
-                    <text x="130" y="275" fill="#f8fafc" font-size="11" font-weight="bold" text-anchor="middle">dim_waktu</text>
-                    <line x1="30" y1="285" x2="230" y2="285" stroke="#6366f1" stroke-width="1"/>
-                    <text x="45" y="305" fill="#94a3b8" font-size="10" font-family="monospace">🔑 sk_waktu (PK)</text>
-                    <text x="45" y="320" fill="#94a3b8" font-size="10">🔹 tipe_semester</text>
-                    <text x="45" y="335" fill="#94a3b8" font-size="10">🔹 tahun_ajaran</text>
+                    <!-- TABLE 1: dim_mahasiswa_tkj (Top Left) -->
+                    <g transform="translate(40, 40)">
+                        <!-- Main Card -->
+                        <rect width="220" height="170" rx="10" fill="var(--card-bg)" stroke="#6366f1" stroke-width="1.5" />
+                        <!-- Header Bar -->
+                        <path d="M 0 10 A 10 10 0 0 1 10 0 L 210 0 A 10 10 0 0 1 220 10 L 220 35 L 0 35 Z" fill="url(#headerGrad)" stroke="#6366f1" stroke-width="1" />
+                        <!-- Header Text -->
+                        <text x="15" y="22" fill="#818cf8" font-size="12" font-weight="800" font-family="sans-serif">dim_mahasiswa_tkj</text>
+                        
+                        <!-- Columns -->
+                        <!-- sk_mahasiswa -->
+                        <text x="15" y="55" fill="#f8fafc" font-size="10" font-family="monospace">🔑 sk_mahasiswa : int(11)</text>
+                        <!-- nim -->
+                        <text x="15" y="75" fill="#94a3b8" font-size="10" font-family="monospace">👤 nim : varchar(15)</text>
+                        <!-- nama_mahasiswa -->
+                        <text x="15" y="95" fill="#94a3b8" font-size="10" font-family="monospace">👤 nama_mahasiswa : varchar(100)</text>
+                        <!-- angkatan -->
+                        <text x="15" y="115" fill="#94a3b8" font-size="10" font-family="monospace"># angkatan : int(11)</text>
+                        <!-- kelas -->
+                        <text x="15" y="135" fill="#94a3b8" font-size="10" font-family="monospace">📄 kelas : varchar(50)</text>
+                        <!-- status_akademik -->
+                        <text x="15" y="155" fill="#94a3b8" font-size="10" font-family="monospace">⚙️ status_akademik : varchar(20)</text>
+                    </g>
 
-                    <!-- Fact Table: Ringkasan Akademik -->
-                    <rect x="310" y="140" width="200" height="140" rx="12" fill="rgba(236, 72, 153, 0.15)" stroke="#ec4899" stroke-width="2"/>
-                    <text x="410" y="165" fill="#f8fafc" font-size="12" font-weight="bold" text-anchor="middle">fact_ringkasan_akademik</text>
-                    <line x1="310" y1="175" x2="510" y2="175" stroke="#ec4899" stroke-width="1"/>
-                    <text x="325" y="195" fill="#f1f5f9" font-size="10" font-family="monospace">🔑 sk_mahasiswa (FK)</text>
-                    <text x="325" y="210" fill="#f1f5f9" font-size="10" font-family="monospace">🔑 sk_waktu (FK)</text>
-                    <text x="325" y="230" fill="#ec4899" font-size="10" font-weight="bold">📊 ips (Measure)</text>
-                    <text x="325" y="245" fill="#ec4899" font-size="10" font-weight="bold">📊 ipk (Measure)</text>
+                    <!-- TABLE 2: dim_waktu (Bottom Left) -->
+                    <g transform="translate(40, 250)">
+                        <!-- Main Card -->
+                        <rect width="220" height="130" rx="10" fill="var(--card-bg)" stroke="#6366f1" stroke-width="1.5" />
+                        <!-- Header Bar -->
+                        <path d="M 0 10 A 10 10 0 0 1 10 0 L 210 0 A 10 10 0 0 1 220 10 L 220 35 L 0 35 Z" fill="url(#headerGrad)" stroke="#6366f1" stroke-width="1" />
+                        <!-- Header Text -->
+                        <text x="15" y="22" fill="#818cf8" font-size="12" font-weight="800" font-family="sans-serif">dim_waktu</text>
+                        
+                        <!-- Columns -->
+                        <!-- sk_waktu -->
+                        <text x="15" y="55" fill="#f8fafc" font-size="10" font-family="monospace">🔑 sk_waktu : int(11)</text>
+                        <!-- tahun_ajaran -->
+                        <text x="15" y="75" fill="#94a3b8" font-size="10" font-family="monospace">📅 tahun_ajaran : varchar(20)</text>
+                        <!-- tipe_semester -->
+                        <text x="15" y="95" fill="#94a3b8" font-size="10" font-family="monospace">📅 tipe_semester : varchar(20)</text>
+                        <!-- tahun -->
+                        <text x="15" y="115" fill="#94a3b8" font-size="10" font-family="monospace"># tahun : int(11)</text>
+                    </g>
 
-                    <!-- Fact Table: Kelulusan (OLAP Side Fact) -->
-                    <rect x="570" y="150" width="200" height="120" rx="12" fill="rgba(236, 72, 153, 0.12)" stroke="#ec4899" stroke-width="1"/>
-                    <text x="670" y="175" fill="#f8fafc" font-size="11" font-weight="bold" text-anchor="middle">fact_kelulusan_tkj</text>
-                    <line x1="570" y1="185" x2="770" y2="185" stroke="#ec4899" stroke-width="1"/>
-                    <text x="585" y="205" fill="#94a3b8" font-size="10" font-family="monospace">🔑 sk_mahasiswa (FK)</text>
-                    <text x="585" y="220" fill="#94a3b8" font-size="10">🔹 ipk_akhir</text>
-                    <text x="585" y="235" fill="#94a3b8" font-size="10">🔹 predikat</text>
+                    <!-- TABLE 3: fact_kelulusan_tkj (Top Right) -->
+                    <g transform="translate(540, 40)">
+                        <!-- Main Card -->
+                        <rect width="220" height="170" rx="10" fill="var(--card-bg)" stroke="#ec4899" stroke-width="1.5" />
+                        <!-- Header Bar -->
+                        <path d="M 0 10 A 10 10 0 0 1 10 0 L 210 0 A 10 10 0 0 1 220 10 L 220 35 L 0 35 Z" fill="url(#headerGradFact)" stroke="#ec4899" stroke-width="1" />
+                        <!-- Header Text -->
+                        <text x="15" y="22" fill="#f472b6" font-size="12" font-weight="800" font-family="sans-serif">fact_kelulusan_tkj</text>
+                        
+                        <!-- Columns -->
+                        <!-- id_fact_kelulusan -->
+                        <text x="15" y="55" fill="#f8fafc" font-size="10" font-family="monospace">🔑 id_fact_kelulusan : int(11)</text>
+                        <!-- sk_mahasiswa -->
+                        <text x="15" y="75" fill="#f1f5f9" font-size="10" font-family="monospace">🔗 sk_mahasiswa : int(11)</text>
+                        <!-- sk_waktu -->
+                        <text x="15" y="95" fill="#f1f5f9" font-size="10" font-family="monospace">🔗 sk_waktu : int(11)</text>
+                        <!-- ipk_akhir -->
+                        <text x="15" y="115" fill="#f472b6" font-size="10" font-weight="bold" font-family="monospace">📊 ipk_akhir : decimal(4,2)</text>
+                        <!-- lama_studi_semester -->
+                        <text x="15" y="135" fill="#f472b6" font-size="10" font-weight="bold" font-family="monospace">📊 lama_studi : int(11)</text>
+                        <!-- predikat -->
+                        <text x="15" y="155" fill="#94a3b8" font-size="10" font-family="monospace">⚙️ predikat : varchar(50)</text>
+                    </g>
+
+                    <!-- TABLE 4: fact_ringkasan_akademik (Bottom Right) -->
+                    <g transform="translate(540, 240)">
+                        <!-- Main Card -->
+                        <rect width="220" height="150" rx="10" fill="var(--card-bg)" stroke="#ec4899" stroke-width="1.5" />
+                        <!-- Header Bar -->
+                        <path d="M 0 10 A 10 10 0 0 1 10 0 L 210 0 A 10 10 0 0 1 220 10 L 220 35 L 0 35 Z" fill="url(#headerGradFact)" stroke="#ec4899" stroke-width="1" />
+                        <!-- Header Text -->
+                        <text x="15" y="22" fill="#f472b6" font-size="12" font-weight="800" font-family="sans-serif">fact_ringkasan_akademik</text>
+                        
+                        <!-- Columns -->
+                        <!-- id_fact_akademik -->
+                        <text x="15" y="55" fill="#f8fafc" font-size="10" font-family="monospace">🔑 id_fact_akademik : int(11)</text>
+                        <!-- sk_mahasiswa -->
+                        <text x="15" y="75" fill="#f1f5f9" font-size="10" font-family="monospace">🔗 sk_mahasiswa : int(11)</text>
+                        <!-- sk_waktu -->
+                        <text x="15" y="95" fill="#f1f5f9" font-size="10" font-family="monospace">🔗 sk_waktu : int(11)</text>
+                        <!-- ips -->
+                        <text x="15" y="115" fill="#f472b6" font-size="10" font-weight="bold" font-family="monospace">📊 ips : decimal(4,2)</text>
+                        <!-- ipk -->
+                        <text x="15" y="135" fill="#f472b6" font-size="10" font-weight="bold" font-family="monospace">📊 ipk : decimal(4,2)</text>
+                    </g>
                 </svg>
             </div>
         </div>

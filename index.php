@@ -217,6 +217,17 @@ $kelas_list = $summary['kelas_list'] ?? [];
             background: rgba(255, 255, 255, 0.09) !important;
             box-shadow: 0 0 25px rgba(99, 102, 241, 0.3) !important;
         }
+        /* PowerBI Sidebar Tabs Active State */
+        #powerBiSidebar button.active {
+            border-bottom-color: #6366f1;
+            color: #818cf8;
+            background: rgba(99, 102, 241, 0.05);
+        }
+        body.light-mode #powerBiSidebar button.active {
+            border-bottom-color: #6366f1;
+            color: #6366f1;
+            background: rgba(99, 102, 241, 0.04);
+        }
     </style>
 </head>
 <body class="text-text-main min-h-screen flex relative overflow-x-hidden">
@@ -327,6 +338,9 @@ $kelas_list = $summary['kelas_list'] ?? [];
                             <button onclick="setGridColumns('grid-cols-1 md:grid-cols-2')" class="flex items-center gap-1 text-slate-300 hover:text-white rounded-lg px-2.5 py-1.5 text-[10px] font-bold transition-all hover:bg-white/5" title="2 Kolom">
                                 <span class="material-symbols-outlined text-[15px]">dashboard</span> 2-Col
                             </button>
+                            <button onclick="togglePanes()" class="flex items-center gap-1 text-slate-300 hover:text-white rounded-lg px-2.5 py-1.5 text-[10px] font-bold transition-all hover:bg-white/5" title="Toggle Sidebar Panes">
+                                <span class="material-symbols-outlined text-[15px]">view_sidebar</span> Panes
+                            </button>
                             <button onclick="resetDashboard()" class="flex items-center gap-1 text-rose-400 hover:text-rose-300 rounded-lg px-2.5 py-1.5 text-[10px] font-bold transition-all hover:bg-rose-500/10" title="Reset Dashboard">
                                 <span class="material-symbols-outlined text-[15px]">restart_alt</span> Reset
                             </button>
@@ -359,9 +373,86 @@ $kelas_list = $summary['kelas_list'] ?? [];
                 </div>
             </div>
             <div class="flex flex-col gap-2">
-                         <button onclick="clearGlobalFilters()" class="w-full py-2.5 text-slate-300 text-xs font-bold rounded-xl transition-colors mt-2 glass-btn hover:bg-slate-800/40">
-                            Clear Filters
-                        </button>
+                <a href="index.php" class="flex items-center gap-2.5 py-2 px-3 rounded-xl hover:bg-white/5 text-xs font-bold text-slate-300 hover:text-white transition-all">
+                    <span class="material-symbols-outlined text-[18px]">grid_view</span> Dashboard
+                </a>
+                <a href="akademik.php" class="flex items-center gap-2.5 py-2 px-3 rounded-xl hover:bg-white/5 text-xs font-bold text-slate-300 hover:text-white transition-all">
+                    <span class="material-symbols-outlined text-[18px]">group</span> Data Mahasiswa
+                </a>
+                <a href="laporan.php" class="flex items-center gap-2.5 py-2 px-3 rounded-xl hover:bg-white/5 text-xs font-bold text-slate-300 hover:text-white transition-all">
+                    <span class="material-symbols-outlined text-[18px]">analytics</span> Perbandingan Kelas
+                </a>
+                <a href="tren.php" class="flex items-center gap-2.5 py-2 px-3 rounded-xl hover:bg-white/5 text-xs font-bold text-slate-300 hover:text-white transition-all">
+                    <span class="material-symbols-outlined text-[18px]">timeline</span> Tren IPK Angkatan
+                </a>
+                <a href="skema.php" class="flex items-center gap-2.5 py-2 px-3 rounded-xl hover:bg-white/5 text-xs font-bold text-slate-300 hover:text-white transition-all">
+                    <span class="material-symbols-outlined text-[18px]">schema</span> Skema DW
+                </a>
+                <button onclick="openSettingsModal()" class="flex items-center gap-2.5 py-2 px-3 rounded-xl hover:bg-white/5 text-xs font-bold text-slate-300 hover:text-white w-full text-left transition-all">
+                    <span class="material-symbols-outlined text-[18px]">settings</span> Pengaturan
+                </button>
+            </div>
+            <a href="logout.php" class="flex items-center gap-2.5 py-2.5 px-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-xs font-bold text-red-400 transition-all justify-center">
+                <span class="material-symbols-outlined text-[16px]">logout</span> Keluar
+            </a>
+        </div>
+
+        <!-- ====== MAIN WORKSPACE LAYOUT ====== -->
+        <div class="flex-1 flex flex-col md:flex-row relative">
+            <!-- Left/Main Canvas Area -->
+            <div class="flex-1 p-6 md:p-8 flex flex-col gap-6">
+                <!-- Dynamic Grid for Widgets -->
+                <div id="dashboardCanvas" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full items-start">
+                    <!-- Widgets are injected dynamically via JavaScript (buildDashboard) -->
+                </div>
+            </div>
+
+            <!-- Right Collapsible PowerBI-like Sidebar -->
+            <aside id="powerBiSidebar" class="w-full md:w-80 border-t md:border-t-0 md:border-l border-white/10 flex flex-col glass-card shrink-0 select-none">
+                <!-- Sidebar Tabs Header -->
+                <div class="flex border-b border-white/10 text-center font-bold text-[10px] uppercase tracking-wider text-slate-400">
+                    <button id="tab-filters" onclick="switchRightPane('filters')" class="flex-1 py-4 border-b-2 border-transparent hover:text-slate-200 transition-all flex items-center justify-center gap-1 active">
+                        <span class="material-symbols-outlined text-[14px]">filter_alt</span> Filters
+                    </button>
+                    <button id="tab-visualizations" onclick="switchRightPane('visualizations')" class="flex-1 py-4 border-b-2 border-transparent hover:text-slate-200 transition-all flex items-center justify-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">show_chart</span> Visuals
+                    </button>
+                    <button id="tab-fields" onclick="switchRightPane('fields')" class="flex-1 py-4 border-b-2 border-transparent hover:text-slate-200 transition-all flex items-center justify-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">table_chart</span> Fields
+                    </button>
+                </div>
+
+                <!-- Sidebar Body / Content Panes -->
+                <div class="flex-1 p-5 overflow-y-auto flex flex-col gap-6">
+                    <!-- PANE 1: GLOBAL FILTERS -->
+                    <div id="pane-filters" class="flex flex-col gap-5">
+                        <div>
+                            <h3 class="text-xs font-extrabold text-slate-100 uppercase tracking-wide">Filter Global</h3>
+                            <p class="text-[10px] text-text-muted mt-1 font-bold">Terapkan filter ke seluruh visual di canvas</p>
+                        </div>
+                        <div class="flex flex-col gap-4">
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Angkatan</label>
+                                <select id="globalAngkatan" onchange="applyGlobalFilters()" class="border-0 rounded-2xl pl-4 pr-10 py-2.5 text-xs font-bold text-slate-200 cursor-pointer glass-input w-full">
+                                    <option value="">Semua Angkatan</option>
+                                    <?php foreach ($angkatan_list as $ang): ?>
+                                        <option value="<?= htmlspecialchars($ang) ?>">Angkatan <?= htmlspecialchars($ang) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Kelas</label>
+                                <select id="globalKelas" onchange="applyGlobalFilters()" class="border-0 rounded-2xl pl-4 pr-10 py-2.5 text-xs font-bold text-slate-200 cursor-pointer glass-input w-full">
+                                    <option value="">Semua Kelas</option>
+                                    <?php foreach ($kelas_list as $kls): ?>
+                                        <option value="<?= htmlspecialchars($kls) ?>">Kelas <?= htmlspecialchars($kls) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <button onclick="clearGlobalFilters()" class="w-full py-2.5 text-slate-300 text-xs font-bold rounded-xl transition-colors mt-2 glass-btn hover:bg-slate-800/40">
+                                Clear Filters
+                            </button>
+                        </div>
                     </div>
 
                     <!-- PANE 2: VISUALIZATIONS -->
@@ -421,35 +512,52 @@ $kelas_list = $summary['kelas_list'] ?? [];
                         <!-- Table: dim_mahasiswa_tkj -->
                         <div class="flex flex-col gap-2">
                             <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px] text-primary-light">table_chart</span> dim_mahasiswa_tkj</span>
-                            <div class="flex flex-col gap-1 pl-5 border-l border-white/10 text-[11px] font-bold text-slate-400">
-                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px]">key</span> sk_mahasiswa</span>
-                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px]">pin</span> nim</span>
-                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px]">abc</span> nama_mahasiswa</span>
-                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px]">calendar_today</span> angkatan</span>
-                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px]">class</span> kelas</span>
-                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px]">check_box</span> status_akademik</span>
+                            <div class="flex flex-col gap-1 pl-5 border-l border-white/10 text-[10px] font-bold text-slate-400">
+                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px] text-indigo-400">key</span> sk_mahasiswa <span class="text-[8px] font-medium text-slate-500">(PK, int)</span></span>
+                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px] text-slate-500">badge</span> nim <span class="text-[8px] font-medium text-slate-500">(varchar)</span></span>
+                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px] text-slate-500">person</span> nama_mahasiswa <span class="text-[8px] font-medium text-slate-500">(varchar)</span></span>
+                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px] text-slate-500">tag</span> angkatan <span class="text-[8px] font-medium text-slate-500">(int)</span></span>
+                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px] text-slate-500">class</span> kelas <span class="text-[8px] font-medium text-slate-500">(varchar)</span></span>
+                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px] text-slate-500">settings</span> status_akademik <span class="text-[8px] font-medium text-slate-500">(varchar)</span></span>
+                            </div>
+                        </div>
+
+                        <!-- Table: dim_waktu -->
+                        <div class="flex flex-col gap-2">
+                            <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px] text-primary-light">table_chart</span> dim_waktu</span>
+                            <div class="flex flex-col gap-1 pl-5 border-l border-white/10 text-[10px] font-bold text-slate-400">
+                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px] text-indigo-400">key</span> sk_waktu <span class="text-[8px] font-medium text-slate-500">(PK, int)</span></span>
+                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px] text-slate-500">calendar_today</span> tahun_ajaran <span class="text-[8px] font-medium text-slate-500">(varchar)</span></span>
+                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px] text-slate-500">schedule</span> tipe_semester <span class="text-[8px] font-medium text-slate-500">(varchar)</span></span>
+                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px] text-slate-500">tag</span> tahun <span class="text-[8px] font-medium text-slate-500">(int)</span></span>
                             </div>
                         </div>
 
                         <!-- Table: fact_ringkasan_akademik -->
                         <div class="flex flex-col gap-2">
                             <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px] text-indigo-400">table_chart</span> fact_ringkasan_akademik</span>
-                            <div class="flex flex-col gap-1 pl-5 border-l border-white/10 text-[11px] font-bold text-slate-400">
-                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px]">timeline</span> ips</span>
-                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px]">monitoring</span> ipk</span>
+                            <div class="flex flex-col gap-1 pl-5 border-l border-white/10 text-[10px] font-bold text-slate-400">
+                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px] text-indigo-400">key</span> id_fact_akademik <span class="text-[8px] font-medium text-slate-500">(PK, int)</span></span>
+                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px] text-emerald-400">link</span> sk_mahasiswa <span class="text-[8px] font-medium text-slate-500">(FK, int)</span></span>
+                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px] text-emerald-400">link</span> sk_waktu <span class="text-[8px] font-medium text-slate-500">(FK, int)</span></span>
+                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px] text-pink-400">monitoring</span> ips <span class="text-[8px] font-medium text-slate-500">(decimal)</span></span>
+                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px] text-pink-400">analytics</span> ipk <span class="text-[8px] font-medium text-slate-500">(decimal)</span></span>
                             </div>
                         </div>
 
                         <!-- Table: fact_kelulusan_tkj -->
                         <div class="flex flex-col gap-2">
                             <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px] text-emerald-400">table_chart</span> fact_kelulusan_tkj</span>
-                            <div class="flex flex-col gap-1 pl-5 border-l border-white/10 text-[11px] font-bold text-slate-400">
-                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px]">workspace_premium</span> predikat</span>
-                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px]">school</span> ipk_akhir</span>
+                            <div class="flex flex-col gap-1 pl-5 border-l border-white/10 text-[10px] font-bold text-slate-400">
+                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px] text-indigo-400">key</span> id_fact_kelulusan <span class="text-[8px] font-medium text-slate-500">(PK, int)</span></span>
+                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px] text-emerald-400">link</span> sk_mahasiswa <span class="text-[8px] font-medium text-slate-500">(FK, int)</span></span>
+                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px] text-emerald-400">link</span> sk_waktu <span class="text-[8px] font-medium text-slate-500">(FK, int)</span></span>
+                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px] text-pink-400">school</span> ipk_akhir <span class="text-[8px] font-medium text-slate-500">(decimal)</span></span>
+                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px] text-pink-400">hourglass_empty</span> lama_studi_semester <span class="text-[8px] font-medium text-slate-500">(int)</span></span>
+                                <span class="flex items-center gap-1.5 py-0.5"><span class="material-symbols-outlined text-[12px] text-slate-500">workspace_premium</span> predikat <span class="text-[8px] font-medium text-slate-500">(varchar)</span></span>
                             </div>
                         </div>
                     </div>
-
                 </div>
 
                 <!-- Minimize Pane Button -->
@@ -838,6 +946,12 @@ function applyGlobalFilters() {
             widget.params.angkatan = angkatan;
             widget.params.kelas = kelas;
             
+            // Update filter display text in the DOM
+            const displayEl = document.querySelector(`.widget-card[data-id="${widget.id}"] .filter-display`);
+            if (displayEl) {
+                displayEl.textContent = `${angkatan || 'Semua'} / ${kelas || 'Semua'}`;
+            }
+            
             if (activeCharts[widget.id]) {
                 loadChartDataAndRender(widget);
             }
@@ -880,7 +994,16 @@ function buildDashboard() {
     currentWidgets.forEach(widget => {
         const card = document.createElement('div');
         card.dataset.id = widget.id;
-        card.className = `widget-card rounded-[2rem] p-6 relative flex flex-col justify-between cursor-pointer group select-none ${widget.id === selectedWidgetId ? 'selected' : ''}`;
+        
+        // Calculate responsive grid column span
+        let colSpanClass = '';
+        if (widget.colSpan === 2) {
+            colSpanClass = 'md:col-span-2';
+        } else if (widget.colSpan === 3) {
+            colSpanClass = 'md:col-span-2 lg:col-span-3';
+        }
+        
+        card.className = `widget-card rounded-[2rem] p-6 relative flex flex-col justify-between cursor-pointer group select-none ${widget.id === selectedWidgetId ? 'selected' : ''} ${colSpanClass}`;
         
         card.addEventListener('click', (e) => {
             if (e.target.closest('.widget-controls') || e.target.closest('select') || e.target.closest('input')) return;
@@ -936,14 +1059,18 @@ function buildDashboard() {
                         <h4 class="text-xs font-bold text-slate-100">${widget.title}</h4>
                         ${widget.params ? `
                             <p class="text-[9px] text-text-muted font-bold mt-0.5 uppercase">
-                                Filter: ${widget.params.angkatan || 'Semua'} / ${widget.params.kelas || 'Semua'}
+                                Filter: <span class="filter-display">${widget.params.angkatan || 'Semua'} / ${widget.params.kelas || 'Semua'}</span>
                             </p>
                         ` : ''}
                     </div>
                     ${controlsHTML}
                 </div>
-                <div class="relative h-44 w-full">
+                <div class="relative w-full overflow-hidden" style="height: ${widget.height || 176}px;">
                     <canvas id="chart-canvas-${widget.id}"></canvas>
+                </div>
+                <!-- Drag resize handle -->
+                <div class="absolute bottom-2 right-2 w-4 h-4 cursor-se-resize flex items-center justify-center text-slate-500 hover:text-slate-300 select-none resize-handle opacity-0 group-hover:opacity-60 hover:opacity-100 transition-opacity" onmousedown="initResize(event, '${widget.id}')" ontouchstart="initResize(event, '${widget.id}')">
+                    <span class="material-symbols-outlined text-[14px]">south_east</span>
                 </div>
             `;
             canvas.appendChild(card);
@@ -1110,6 +1237,102 @@ function loadChartDataAndRender(widget) {
         activeCharts[widget.id] = new Chart(ctx, chartConfig);
     })
     .catch(err => console.error("Error loading visual data:", err));
+}
+
+// Drag to Resize Charts Engine (Multi-directional: Height & Column-span)
+function initResize(e, widgetId) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const widget = currentWidgets.find(w => w.id === widgetId);
+    if (!widget) return;
+    
+    const card = document.querySelector(`.widget-card[data-id="${widgetId}"]`);
+    if (!card) return;
+    
+    const canvasId = `chart-canvas-${widgetId}`;
+    const canvasEl = document.getElementById(canvasId);
+    if (!canvasEl) return;
+    const canvasWrapper = canvasEl.parentElement;
+    
+    const startX = e.clientX || (e.touches && e.touches[0].clientX);
+    const startY = e.clientY || (e.touches && e.touches[0].clientY);
+    const startHeight = parseInt(window.getComputedStyle(canvasWrapper).height) || 176;
+    const startColSpan = widget.colSpan || 1;
+    
+    let currentColSpan = startColSpan;
+    
+    function onMouseMove(moveEvent) {
+        if (moveEvent.cancelable) {
+            moveEvent.preventDefault();
+        }
+        
+        const currentX = moveEvent.clientX || (moveEvent.touches && moveEvent.touches[0].clientY);
+        const currentY = moveEvent.clientY || (moveEvent.touches && moveEvent.touches[0].clientY);
+        if (currentX === undefined || currentY === undefined) return;
+        
+        // 1. Vertical Resize (Height in pixels)
+        const deltaY = currentY - startY;
+        let newHeight = startHeight + deltaY;
+        if (newHeight < 120) newHeight = 120;
+        if (newHeight > 600) newHeight = 600;
+        canvasWrapper.style.height = `${newHeight}px`;
+        
+        // 2. Horizontal Resize (Column Span: 1, 2, or 3)
+        const deltaX = currentX - startX;
+        let newColSpan = startColSpan;
+        
+        if (deltaX > 180) {
+            newColSpan = Math.min(3, startColSpan + 1);
+            if (deltaX > 380) {
+                newColSpan = Math.min(3, startColSpan + 2);
+            }
+        } else if (deltaX < -180) {
+            newColSpan = Math.max(1, startColSpan - 1);
+            if (deltaX < -380) {
+                newColSpan = Math.max(1, startColSpan - 2);
+            }
+        }
+        
+        if (newColSpan !== currentColSpan) {
+            currentColSpan = newColSpan;
+            
+            // Remove current col-span classes
+            card.classList.remove('md:col-span-2', 'lg:col-span-3');
+            
+            // Add new col-span classes
+            if (currentColSpan === 2) {
+                card.classList.add('md:col-span-2');
+            } else if (currentColSpan === 3) {
+                card.classList.add('md:col-span-2', 'lg:col-span-3');
+            }
+        }
+        
+        // Trigger Chart.js resize
+        if (activeCharts[widgetId]) {
+            activeCharts[widgetId].resize();
+        }
+    }
+    
+    function onMouseUp() {
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+        window.removeEventListener('touchmove', onMouseMove);
+        window.removeEventListener('touchend', onMouseUp);
+        
+        const finalHeight = parseInt(canvasWrapper.style.height);
+        widget.height = finalHeight;
+        widget.colSpan = currentColSpan;
+        saveDashboardState();
+        
+        // Rebuild dashboard to ensure grid flow snaps perfectly
+        buildDashboard();
+    }
+    
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    window.addEventListener('touchmove', onMouseMove, { passive: false });
+    window.addEventListener('touchend', onMouseUp);
 }
 
 // Initial Build Call
