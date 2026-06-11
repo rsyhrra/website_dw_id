@@ -492,25 +492,6 @@ $summary = is_array($res_summary) ? $res_summary : [
     </main>
 </div>
 
-<!-- ====== MOBILE BOTTOM NAV ====== -->
-<nav class="md:hidden fixed bottom-6 left-6 right-6 h-16 bg-[#0f172a]/85 backdrop-blur-lg border border-white/15 rounded-2xl flex items-center justify-around px-4 z-[9999] shadow-2xl">
-    <a href="index.php" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200">
-        <span class="material-symbols-outlined text-[22px]">school</span>
-        <span class="text-[9px] font-bold mt-0.5">Dashboard</span>
-    </a>
-    <a href="akademik.php" class="flex flex-col items-center justify-center text-primary-light px-3 py-1.5 rounded-xl bg-white/5">
-        <span class="material-symbols-outlined text-[22px]" style="font-variation-settings: 'FILL' 1">group</span>
-        <span class="text-[9px] font-bold mt-0.5">Akademik</span>
-    </a>
-    <button onclick="openSettingsModal()" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200 focus:outline-none">
-        <span class="material-symbols-outlined text-[22px]">settings</span>
-        <span class="text-[9px] font-bold mt-0.5">Settings</span>
-    </button>
-    <a href="logout.php" class="flex flex-col items-center justify-center text-red-400">
-        <span class="material-symbols-outlined text-[22px]">logout</span>
-        <span class="text-[9px] font-bold mt-0.5">Keluar</span>
-    </a>
-</nav>
 
 <!-- ====== SETTINGS MODAL ====== -->
 <div id="settingsModal" class="hidden fixed inset-0 z-[10000] items-center justify-center p-4">
@@ -704,9 +685,9 @@ $summary = is_array($res_summary) ? $res_summary : [
         <span class="material-symbols-outlined text-[20px]">schema</span>
         <span class="text-[8px] font-bold mt-0.5">Skema</span>
     </a>
-    <a href="logout.php" class="flex flex-col items-center justify-center text-red-400">
-        <span class="material-symbols-outlined text-[20px]">logout</span>
-        <span class="text-[8px] font-bold mt-0.5">Out</span>
+    <a href="api_docs.php" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200">
+        <span class="material-symbols-outlined text-[20px]">api</span>
+        <span class="text-[8px] font-bold mt-0.5">API</span>
     </a>
 </nav>
 

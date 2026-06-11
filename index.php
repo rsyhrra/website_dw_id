@@ -593,9 +593,9 @@ $kelas_list = $summary['kelas_list'] ?? [];
                 <span class="material-symbols-outlined text-[20px]">schema</span>
                 <span class="text-[8px] font-bold mt-0.5">Skema</span>
             </a>
-            <a href="logout.php" class="flex flex-col items-center justify-center text-red-400">
-                <span class="material-symbols-outlined text-[20px]">logout</span>
-                <span class="text-[8px] font-bold mt-0.5">Out</span>
+            <a href="api_docs.php" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200">
+                <span class="material-symbols-outlined text-[20px]">api</span>
+                <span class="text-[8px] font-bold mt-0.5">API</span>
             </a>
         </nav>
 
