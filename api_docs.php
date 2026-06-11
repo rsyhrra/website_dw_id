@@ -1182,11 +1182,97 @@ window.addEventListener('load', () => {
 });
 
 function openSettingsModal() {
-    document.getElementById('settingsModal').classList.replace('hidden', 'flex');
+    const modal = document.getElementById('settingsModal');
+    modal.classList.replace('hidden', 'flex');
+    setTimeout(() => {
+        modal.querySelector('.glass-modal').classList.replace('scale-95', 'scale-100');
+    }, 10);
 }
+
 function closeSettingsModal() {
-    document.getElementById('settingsModal').classList.replace('flex', 'hidden');
+    const modal = document.getElementById('settingsModal');
+    modal.querySelector('.glass-modal').classList.replace('scale-100', 'scale-95');
+    setTimeout(() => {
+        modal.classList.replace('flex', 'hidden');
+    }, 300);
 }
 </script>
+
+<!-- ====== MOBILE BOTTOM NAV ====== -->
+<nav class="md:hidden fixed bottom-6 left-6 right-6 h-16 bg-[#0f172a]/85 backdrop-blur-lg border border-white/15 rounded-2xl flex items-center justify-around px-2 z-[9999] shadow-2xl">
+    <a href="index.php" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200">
+        <span class="material-symbols-outlined text-[20px]">school</span>
+        <span class="text-[8px] font-bold mt-0.5">Home</span>
+    </a>
+    <a href="akademik.php" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200">
+        <span class="material-symbols-outlined text-[20px]">group</span>
+        <span class="text-[8px] font-bold mt-0.5">Mhs</span>
+    </a>
+    <a href="laporan.php" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200">
+        <span class="material-symbols-outlined text-[20px]">analytics</span>
+        <span class="text-[8px] font-bold mt-0.5">Lapor</span>
+    </a>
+    <a href="tren.php" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200">
+        <span class="material-symbols-outlined text-[20px]">timeline</span>
+        <span class="text-[8px] font-bold mt-0.5">Tren</span>
+    </a>
+    <a href="skema.php" class="flex flex-col items-center justify-center text-slate-400 hover:text-slate-200">
+        <span class="material-symbols-outlined text-[20px]">schema</span>
+        <span class="text-[8px] font-bold mt-0.5">Skema</span>
+    </a>
+    <a href="api_docs.php" class="flex flex-col items-center justify-center text-primary-light px-2 py-1 rounded-xl bg-white/5">
+        <span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1">api</span>
+        <span class="text-[8px] font-bold mt-0.5">API</span>
+    </a>
+</nav>
+
+<!-- ====== SETTINGS MODAL ====== -->
+<div id="settingsModal" class="hidden fixed inset-0 z-[10000] items-center justify-center p-4">
+    <!-- Backdrop with blur -->
+    <div class="absolute inset-0 bg-slate-950/40 backdrop-blur-md transition-opacity" onclick="closeSettingsModal()"></div>
+    
+    <!-- Modal Content -->
+    <div class="glass-modal glass-card rounded-[2.5rem] p-8 md:p-10 max-w-md w-full relative z-10 scale-95 transition-all duration-300">
+        <div class="flex justify-between items-start mb-6">
+            <div>
+                <h3 class="text-xl font-extrabold text-slate-100">Pengaturan Sistem</h3>
+                <p class="text-xs font-bold text-text-muted mt-1">Konfigurasi & informasi portal akademik</p>
+            </div>
+            <button onclick="closeSettingsModal()" class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-200 glass-btn">
+                <span class="material-symbols-outlined text-[18px]">close</span>
+            </button>
+        </div>
+        
+        <div class="flex flex-col gap-6">
+            <!-- Section 1: API Config -->
+            <div class="p-4 rounded-2xl bg-slate-900/40 border border-white/5 flex flex-col gap-3">
+                <span class="text-[10px] text-text-muted font-bold uppercase tracking-wider">Koneksi API Warehouse</span>
+                <div class="flex flex-col gap-1">
+                    <span class="text-xs font-semibold text-slate-400">API Endpoint</span>
+                    <span class="text-xs font-bold text-indigo-300 break-all select-all mt-1"><?= API_BASE ?></span>
+                </div>
+            </div>
+
+            <!-- Section 2: Account Details -->
+            <div class="flex flex-col gap-3">
+                <span class="text-[10px] text-text-muted font-bold uppercase tracking-wider">Informasi Akun</span>
+                <div class="flex justify-between items-center py-2 border-b border-white/5">
+                    <span class="text-xs font-semibold text-slate-400">Role Pengguna</span>
+                    <span class="text-xs font-bold text-primary-light">Administrator</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-white/5">
+                    <span class="text-xs font-semibold text-slate-400">Username</span>
+                    <span class="text-xs font-bold text-slate-200">admin</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex gap-4 mt-8">
+            <button onclick="closeSettingsModal()" class="flex-1 py-3.5 text-slate-350 rounded-2xl font-bold text-xs glass-btn">
+                Tutup
+            </button>
+        </div>
+    </div>
+</div>
 </body>
 </html>
