@@ -28,7 +28,7 @@ function log_request($conn, $endpoint, $method, $status_code, $api_key) {
 }
 
 $headers = function_exists('apache_request_headers') ? apache_request_headers() : [];
-$client_key = trim($headers['key'] ?? $headers['Key'] ?? $_SERVER['HTTP_KEY'] ?? '');
+$client_key = trim($headers['key'] ?? $headers['Key'] ?? $_SERVER['HTTP_KEY'] ?? $_GET['key'] ?? $_POST['key'] ?? '');
 $type = $_GET['type'] ?? '';
 
 // Check key validity
